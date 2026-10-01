@@ -1,0 +1,36 @@
+### أمثلة طلبات إحصاءات الرواد (VS Code REST Client / IntelliJ HTTP Client)
+### شغّل الـbackend أولًا:  php artisan serve  (المنفذ 8000)
+
+@base = http://127.0.0.1:8000/api/v1
+
+### فحص التشغيل
+GET {{base}}/health
+Accept: application/json
+
+### المؤسسات
+GET {{base}}/institutions
+Accept: application/json
+
+### خيارات الفلاتر
+GET {{base}}/filters?institution=rowad
+Accept: application/json
+
+### خيارات الفلاتر بعد اختيار المشروع والفترة (المكاتب التي لها بيانات فقط)
+GET {{base}}/filters?institution=rowad&project=loba-wa-farha&period=2026-05
+Accept: application/json
+
+### لوحة العرض كاملة — المتوقع: ذكور 718، إناث 732، إجمالي 1450، مكاتب 7
+GET {{base}}/dashboard?institution=rowad
+Accept: application/json
+
+### فلتر جرابلس — المتوقع: 120 / 130 / 250
+GET {{base}}/dashboard?institution=rowad&project=loba-wa-farha&period=2026-05&office=jarabulus
+Accept: application/json
+
+### خطأ 422: مكتب لا ينتمي للمؤسسة
+GET {{base}}/dashboard?institution=rowad&office=unknown
+Accept: application/json
+
+### خطأ 422: صيغة فترة غير صحيحة
+GET {{base}}/dashboard?institution=rowad&period=2026-13
+Accept: application/json

@@ -1,0 +1,40 @@
+# Secrets and local environment
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+auth.json
+
+# Dependencies and build output
+**/node_modules/
+**/vendor/
+/frontend/dist/
+/backend/public/build/
+/backend/public/hot/
+/backend/public/storage
+
+# Source data stays local: nothing under data/ is published except its README
+/data/*
+!/data/README.md
+
+# Logs, caches, backups, local databases
+*.log
+logs/
+*.bak
+*.backup
+*.sql
+*.sqlite
+*.sqlite3
+*.tsbuildinfo
+.phpunit.result.cache
+.phpunit.cache/
+/backend/storage/pail
+
+# OS / editor / Office lock files
+.DS_Store
+Thumbs.db
+~$*
+.idea/
+.vscode/*
+!.vscode/extensions.json
