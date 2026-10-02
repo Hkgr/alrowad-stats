@@ -19,9 +19,18 @@ class FilterOptionsResource extends JsonResource
     {
         return [
             'institution' => new InstitutionResource($this->filters->institution),
-            'projects' => $this->options['projects']->map(fn ($p) => [
-                'slug' => $p->slug,
-                'name' => $p->name,
+            'classification_year' => $this->options['classification_year'],
+            'sectors' => $this->options['sectors']->map(fn ($row) => [
+                'slug' => $row['sector']->slug,
+                'code' => $row['sector']->code,
+                'name' => $row['sector']->name,
+                'classified_projects' => $row['classified'],
+            ])->values(),
+            'projects' => $this->options['projects']->map(fn ($row) => [
+                'slug' => $row['project']->slug,
+                'name' => $row['project']->name,
+                'sector' => $row['sector'] ? ['slug' => $row['sector']->slug, 'name' => $row['sector']->name] : null,
+                'has_data' => $row['has_data'],
             ])->values(),
             'periods' => $this->options['periods']->map(fn ($p) => [
                 'key' => $p->key(),

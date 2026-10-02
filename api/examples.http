@@ -11,24 +11,28 @@ Accept: application/json
 GET {{base}}/institutions
 Accept: application/json
 
-### خيارات الفلاتر
+### خيارات الفلاتر: المسارات الخمسة وكتالوج المشاريع (56) والفترات والمكاتب
 GET {{base}}/filters?institution=rowad
 Accept: application/json
 
-### خيارات الفلاتر بعد اختيار المشروع والفترة (المكاتب التي لها بيانات فقط)
-GET {{base}}/filters?institution=rowad&project=loba-wa-farha&period=2026-05
-Accept: application/json
-
-### لوحة العرض كاملة — المتوقع: ذكور 718، إناث 732، إجمالي 1450، مكاتب 7
+### النظرة العامة — المتوقع: 1450 (ذكور 718، إناث 732)، 7 مكاتب، 1 من 56 مشروعًا لديه بيانات
 GET {{base}}/dashboard?institution=rowad
 Accept: application/json
 
-### فلتر جرابلس — المتوقع: 120 / 130 / 250
-GET {{base}}/dashboard?institution=rowad&project=loba-wa-farha&period=2026-05&office=jarabulus
+### المسار: الثقافة والرياضة والتسلية والفنون — 1450، 11 مشروعًا مصنفًا
+GET {{base}}/dashboard?institution=rowad&sector=cul
 Accept: application/json
 
-### خطأ 422: مكتب لا ينتمي للمؤسسة
-GET {{base}}/dashboard?institution=rowad&office=unknown
+### مسار بلا بيانات — has_data=false، والأرقام null، و8 مشاريع مصنفة
+GET {{base}}/dashboard?institution=rowad&sector=hlt
+Accept: application/json
+
+### المشروع مع مكتب جرابلس — المتوقع: 120 / 130 / 250
+GET {{base}}/dashboard?institution=rowad&sector=cul&project=loba-wa-farha&office=jarabulus
+Accept: application/json
+
+### خطأ 422: مشروع لا يتبع المسار المحدد
+GET {{base}}/dashboard?institution=rowad&sector=hlt&project=loba-wa-farha
 Accept: application/json
 
 ### خطأ 422: صيغة فترة غير صحيحة

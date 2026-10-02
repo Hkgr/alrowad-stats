@@ -7,7 +7,7 @@ export const fetchInstitutions = (signal?: AbortSignal) =>
 export const fetchFilterOptions = (filters: FilterState, signal?: AbortSignal) =>
   apiGet<FilterOptions>(
     '/filters',
-    { institution: filters.institution, project: filters.project, period: filters.period },
+    { institution: filters.institution, sector: filters.sector, project: filters.project, period: filters.period },
     signal,
   )
 

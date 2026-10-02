@@ -9,6 +9,7 @@ use App\Models\Measure;
 use App\Models\Office;
 use App\Models\Period;
 use App\Models\Project;
+use App\Models\ProjectSectorAssignment;
 use App\Models\Sector;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +23,10 @@ use RuntimeException;
  * عدد الذكور, عدد الإناث, العدد الكامل). The workbook's "level 1" value (نشاط ترفيهي) is kept
  * verbatim as source_category; it is a source label, not a sector.
  *
- * The track (sector) comes from a different file: data/Projects List_2026_09-29.xlsx lists
- * "مشروع لعبة وفرحة" under track 2 "مسار الثقافة والرياضة والتسلية والفنون" (code CUL) in both
- * the "مشاريع حسب الزمن" and "مشاريع حسب المكتب" sheets. Only that documented track is seeded.
+ * The track comes from the 2026 project list (data/Projects List_2026_09-29.xlsx): "مشروع لعبة
+ * وفرحة" is under track 2 "مسار الثقافة والرياضة والتسلية والفنون" (code CUL). The seeder keeps
+ * that single 2026 link so the sample works on its own; `php artisan rowad:import-classification`
+ * imports the full list and matches this same project instead of duplicating it.
  *
  * Re-running is safe: every row is keyed by its natural key and updated in place.
  */
@@ -59,12 +61,17 @@ class LobaWaFarhaMay2026SampleSeeder extends Seeder
 
             $sector = Sector::updateOrCreate(
                 ['institution_id' => $institution->id, 'slug' => 'cul'],
-                ['name' => 'مسار الثقافة والرياضة والتسلية والفنون'],
+                ['code' => 'CUL', 'name' => 'مسار الثقافة والرياضة والتسلية والفنون', 'sort_order' => 2],
             );
 
             $project = Project::updateOrCreate(
                 ['institution_id' => $institution->id, 'slug' => 'loba-wa-farha'],
-                ['name' => 'لعبة وفرحة', 'sector_id' => $sector->id, 'source_category' => 'نشاط ترفيهي'],
+                ['name' => 'لعبة وفرحة', 'source_category' => 'نشاط ترفيهي'],
+            );
+
+            ProjectSectorAssignment::updateOrCreate(
+                ['project_id' => $project->id, 'reference_year' => 2026],
+                ['institution_id' => $institution->id, 'sector_id' => $sector->id, 'source_name' => 'مشروع لعبة وفرحة'],
             );
 
             $period = Period::updateOrCreate(

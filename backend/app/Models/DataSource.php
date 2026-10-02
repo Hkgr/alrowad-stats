@@ -12,6 +12,9 @@ class DataSource extends Model
 
     public const COVERAGE_FULL = 'full';
 
+    /** A reference list (e.g. project → track), not a source of figures. */
+    public const COVERAGE_REFERENCE = 'reference';
+
     protected $fillable = [
         'institution_id', 'slug', 'label', 'file_name', 'reference_url', 'coverage', 'notes',
     ];

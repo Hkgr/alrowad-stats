@@ -13,7 +13,7 @@ export function useInstitutions() {
 /** `filters.institution` must be resolved before calling; queries stay idle until then. */
 export function useFilterOptions(filters: FilterState) {
   return useQuery({
-    queryKey: ['filters', filters.institution, filters.project, filters.period],
+    queryKey: ['filters', filters.institution, filters.sector, filters.project, filters.period],
     queryFn: ({ signal }) => fetchFilterOptions(filters, signal),
     enabled: Boolean(filters.institution),
     placeholderData: keepPreviousData,

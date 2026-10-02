@@ -6,48 +6,44 @@ use App\Models\DataSource;
 use App\Models\Measure;
 use App\Models\Period;
 use App\Models\Project;
+use App\Models\Sector;
 use Illuminate\Support\Collection;
 
 /**
- * Everything the dashboard shows, computed once. Cards, charts and table are all views of
- * the same $offices rows, so they can never disagree.
+ * Everything the dashboard shows, computed once by BeneficiaryDashboardService.
+ * Cards, charts and tables are views of these rows, so they can never disagree.
  */
 final readonly class DashboardData
 {
     /**
-     * @param  list<OfficeFigures>  $offices  Rows inside the filters (cards, gender split, table).
-     * @param  list<OfficeFigures>  $comparison  Same scope but ignoring the office filter, selected one flagged (bar charts).
-     * @param  Collection<int, Project>  $projects  Projects that contribute to the figures.
-     * @param  Collection<int, Period>  $periods  Periods that contribute to the figures.
-     * @param  Collection<int, DataSource>  $sources
+     * @param  list<OfficeFigures>  $offices  Rows inside all filters (cards, gender split, office table).
+     * @param  list<OfficeFigures>  $comparison  Same scope ignoring the office filter; the selected office is flagged.
+     * @param  list<array{sector: Sector, classified: int, figures: ?Figures}>  $sectors  Every sector; figures ignore sector/project filters.
+     * @param  ?Figures  $unclassified  Records whose project has no sector for its period's year (null when none).
+     * @param  list<array{project: Project, sector: ?Sector, figures: ?Figures}>  $projects  Projects of the current sector (or all).
+     * @param  list<array{period: Period, figures: Figures}>  $periods  Periods with records inside all filters.
+     * @param  ?Sector  $activeSector  Selected sector, or the selected project's sector.
+     * @param  int  $classifiedProjects  Projects classified in the current scope (sector or all) for the classification year.
+     * @param  ?Figures  $totals  All filters applied; null when there are no records.
+     * @param  Collection<int, DataSource>  $sources  Sources behind the figures (kept for traceability, not displayed).
      */
     public function __construct(
         public DashboardFilters $filters,
         public Measure $measure,
         public array $offices,
         public array $comparison,
-        public Collection $projects,
-        public Collection $periods,
+        public array $sectors,
+        public ?Figures $unclassified,
+        public array $projects,
+        public array $periods,
+        public ?Sector $activeSector,
+        public int $classifiedProjects,
+        public ?Figures $totals,
         public Collection $sources,
     ) {}
 
     public function hasData(): bool
     {
-        return $this->offices !== [];
-    }
-
-    public function male(): int
-    {
-        return array_sum(array_map(fn (OfficeFigures $o) => $o->male, $this->offices));
-    }
-
-    public function female(): int
-    {
-        return array_sum(array_map(fn (OfficeFigures $o) => $o->female, $this->offices));
-    }
-
-    public function total(): int
-    {
-        return $this->male() + $this->female();
+        return $this->totals !== null;
     }
 }

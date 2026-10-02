@@ -5,7 +5,13 @@ export interface Institution {
   name: string
 }
 
-export interface ProjectOption {
+export interface SectorRef {
+  slug: string
+  code: string | null
+  name: string
+}
+
+export interface ProjectRef {
   slug: string
   name: string
 }
@@ -17,16 +23,13 @@ export interface PeriodOption {
   month: number
 }
 
-export interface OfficeOption {
-  slug: string
-  name: string
-}
-
 export interface FilterOptions {
   institution: Institution
-  projects: ProjectOption[]
+  classification_year: number | null
+  sectors: (SectorRef & { classified_projects: number })[]
+  projects: (ProjectRef & { sector: { slug: string; name: string } | null; has_data: boolean })[]
   periods: PeriodOption[]
-  offices: OfficeOption[]
+  offices: { slug: string; name: string }[]
 }
 
 export interface Measure {
@@ -39,6 +42,31 @@ export interface Measure {
   aggregation: string
   aggregation_label: string
   description: string | null
+}
+
+/** Figures of one slice. Every value is null (and has_data false) when the slice has no records. */
+export interface SliceFigures {
+  has_data: boolean
+  total: number | null
+  male: number | null
+  female: number | null
+  projects_with_data: number | null
+  offices_count: number | null
+}
+
+export interface SectorRow extends SectorRef, SliceFigures {
+  selected: boolean
+  classified_projects: number
+}
+
+export interface ProjectRow extends ProjectRef, SliceFigures {
+  sector: { slug: string; name: string } | null
+  selected: boolean
+}
+
+export interface PeriodRow extends SliceFigures {
+  key: string
+  label: string
 }
 
 export interface OfficeRow {
@@ -67,48 +95,44 @@ export interface Summary {
   male_share: number | null
   female_share: number | null
   offices_count: number | null
+  projects_with_data: number
+  classified_projects: number
 }
 
-export interface ScopeProject {
-  slug: string
-  name: string
-  sector: string | null
-  source_category: string | null
-}
-
-export interface ScopeSource {
-  label: string
-  file_name: string | null
-  reference_url: string | null
-  coverage: 'sample' | 'full'
-  notes: string | null
-}
+export type Level = 'overview' | 'sector' | 'project'
 
 export interface Dashboard {
   institution: Institution
+  level: Level
+  classification_year: number | null
   filters: {
-    project: { slug: string; name: string } | null
+    sector: SectorRef | null
+    project: ProjectRef | null
     period: { key: string; label: string } | null
     office: { slug: string; name: string } | null
   }
+  active_sector: SectorRef | null
   measure: Measure
   has_data: boolean
   summary: Summary
+  sectors: SectorRow[]
+  unclassified: SliceFigures | null
+  projects: ProjectRow[]
+  periods: PeriodRow[]
   offices: OfficeRow[]
   comparison: ComparisonRow[]
-  scope: {
-    projects: ScopeProject[]
-    periods: { key: string; label: string }[]
-    sources: ScopeSource[]
-  }
 }
 
-/** The filter state shared by the URL, the filter bar and every query. */
+/** The exploration state shared by the URL, the controls and every query. */
 export interface FilterState {
   institution: string | null
+  sector: string | null
   project: string | null
   period: string | null
   office: string | null
 }
 
 export type FilterKey = keyof FilterState
+
+/** Breakdown tab shown under the charts. */
+export type BreakdownView = 'projects' | 'offices' | 'sectors'
