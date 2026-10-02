@@ -9,13 +9,19 @@ interface Props {
   onSelectOffice: (slug: string) => void
 }
 
-type Gender = 'male' | 'female'
+type Gender = 'male' | 'female' | 'unreported'
+
+const value = (row: ComparisonRow, gender: Gender) =>
+  gender === 'unreported' ? Math.max(0, row.total - row.male - row.female) : row[gender]
 
 /** Stacked columns: male + female per office. Clicking a column toggles the office filter. */
 export function StackedGenderChart({ rows, onSelectOffice }: Props) {
   const hasSelection = rows.some((row) => row.selected)
+  const hasUnreported = rows.some((row) => value(row, 'unreported') > 0)
 
   const option = useMemo(() => {
+    // A segment shorter than ~6% of the tallest column has no room for its number (the tooltip keeps it).
+    const minLabel = Math.max(1, ...rows.map((r) => r.total)) * 0.06
     const series = (gender: Gender, name: string, color: string, labelColor: string, isTop: boolean) => ({
       id: gender,
       name,
@@ -32,14 +38,14 @@ export function StackedGenderChart({ rows, onSelectOffice }: Props) {
         fontWeight: 700,
         fontSize: 12.5,
         color: labelColor,
-        formatter: (p: { value: number }) => intl.format(p.value),
+        formatter: (p: { value: number }) => (p.value && p.value >= minLabel ? intl.format(p.value) : ''),
       },
       emphasis: { focus: 'self' as const },
       data: rows.map((row) => ({
         key: row.slug,
         row,
         gender,
-        value: row[gender],
+        value: value(row, gender),
         itemStyle: { color, opacity: hasSelection && !row.selected ? DIMMED_OPACITY : 1 },
         label: { opacity: hasSelection && !row.selected ? 0.5 : 1 },
       })),
@@ -55,6 +61,7 @@ export function StackedGenderChart({ rows, onSelectOffice }: Props) {
           return tooltipHtml(r.name, [
             { color: chartColors.male, label: 'ذكور', value: intl.format(r.male) },
             { color: chartColors.female, label: 'إناث', value: intl.format(r.female) },
+            ...(value(r, 'unreported') > 0 ? [{ color: chartColors.unreported, label: 'الجنس غير مذكور', value: intl.format(value(r, 'unreported')) }] : []),
             { label: 'الإجمالي', value: intl.format(r.total), strong: true },
           ])
         },
@@ -76,10 +83,11 @@ export function StackedGenderChart({ rows, onSelectOffice }: Props) {
       },
       series: [
         series('male', 'ذكور', chartColors.male, chartColors.onMale, false),
-        series('female', 'إناث', chartColors.female, chartColors.onFemale, true),
+        series('female', 'إناث', chartColors.female, chartColors.onFemale, !hasUnreported),
+        ...(hasUnreported ? [series('unreported', 'الجنس غير مذكور', chartColors.unreported, chartColors.ink, true)] : []),
       ],
     }
-  }, [rows, hasSelection])
+  }, [rows, hasSelection, hasUnreported])
 
   const summary = rows.map((r) => `${r.name}: ذكور ${intl.format(r.male)} وإناث ${intl.format(r.female)}`).join('، ')
 
@@ -90,11 +98,12 @@ export function StackedGenderChart({ rows, onSelectOffice }: Props) {
         items={[
           { key: 'male', label: 'ذكور', color: chartColors.male },
           { key: 'female', label: 'إناث', color: chartColors.female },
+          ...(hasUnreported ? [{ key: 'unreported', label: 'الجنس غير مذكور', color: chartColors.unreported }] : []),
         ]}
       />
       {/* Seven columns need room: on narrow screens the chart scrolls sideways instead of overlapping labels. */}
       <div className="overflow-x-auto">
-        <div className="min-w-[34rem]">
+        <div style={{ minWidth: `${Math.max(34, rows.length * 4.2)}rem` }}>
           <EChart
             option={option}
             ariaLabel={`أعمدة مكدسة تقارن الذكور والإناث بين المكاتب. ${summary}`}

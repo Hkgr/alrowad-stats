@@ -2,12 +2,13 @@
 
 namespace App\Services\Dashboard;
 
-/** Aggregated figures of one office within the current scope. Total is always male + female. */
+/** Aggregated figures of one office within the current scope. */
 final readonly class OfficeFigures
 {
     public function __construct(
         public string $slug,
         public string $name,
+        public int $total,
         public int $male,
         public int $female,
         public bool $selected = false,
@@ -15,11 +16,11 @@ final readonly class OfficeFigures
 
     public function total(): int
     {
-        return $this->male + $this->female;
+        return $this->total;
     }
 
     public function withSelected(bool $selected): self
     {
-        return new self($this->slug, $this->name, $this->male, $this->female, $selected);
+        return new self($this->slug, $this->name, $this->total, $this->male, $this->female, $selected);
     }
 }

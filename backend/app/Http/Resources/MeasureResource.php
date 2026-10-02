@@ -21,6 +21,7 @@ class MeasureResource extends JsonResource
             'record_level_label' => Measure::RECORD_LEVEL_LABELS[$this->record_level] ?? $this->record_level,
             'aggregation' => $this->aggregation,
             'aggregation_label' => Measure::AGGREGATION_LABELS[$this->aggregation] ?? $this->aggregation,
+            'items_label' => $this->items_label,
             'description' => $this->description,
         ];
     }

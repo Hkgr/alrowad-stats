@@ -2,13 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\BeneficiaryRecord;
+use App\Models\ActivityRecord;
 use App\Models\DataSource;
 use App\Models\Institution;
 use App\Models\Measure;
 use App\Models\Office;
 use App\Models\Period;
 use App\Models\Project;
+use App\Models\ProjectSectorAssignment;
 use App\Models\Sector;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -22,11 +23,13 @@ use RuntimeException;
  * عدد الذكور, عدد الإناث, العدد الكامل). The workbook's "level 1" value (نشاط ترفيهي) is kept
  * verbatim as source_category; it is a source label, not a sector.
  *
- * The track (sector) comes from a different file: data/Projects List_2026_09-29.xlsx lists
- * "مشروع لعبة وفرحة" under track 2 "مسار الثقافة والرياضة والتسلية والفنون" (code CUL) in both
- * the "مشاريع حسب الزمن" and "مشاريع حسب المكتب" sheets. Only that documented track is seeded.
+ * The track comes from the 2026 project list (data/Projects List_2026_09-29.xlsx): "مشروع لعبة
+ * وفرحة" is under track 2 "مسار الثقافة والرياضة والتسلية والفنون" (code CUL). The seeder keeps
+ * that single 2026 link so the sample works on its own; `php artisan rowad:import-classification`
+ * imports the full list and matches this same project instead of duplicating it.
  *
- * Re-running is safe: every row is keyed by its natural key and updated in place.
+ * Re-running is safe: rows are created only when missing, and never once the real workbook has
+ * been imported (the importer supersedes these sample rows).
  */
 class LobaWaFarhaMay2026SampleSeeder extends Seeder
 {
@@ -59,12 +62,17 @@ class LobaWaFarhaMay2026SampleSeeder extends Seeder
 
             $sector = Sector::updateOrCreate(
                 ['institution_id' => $institution->id, 'slug' => 'cul'],
-                ['name' => 'مسار الثقافة والرياضة والتسلية والفنون'],
+                ['code' => 'CUL', 'name' => 'مسار الثقافة والرياضة والتسلية والفنون', 'sort_order' => 2],
             );
 
             $project = Project::updateOrCreate(
                 ['institution_id' => $institution->id, 'slug' => 'loba-wa-farha'],
-                ['name' => 'لعبة وفرحة', 'sector_id' => $sector->id, 'source_category' => 'نشاط ترفيهي'],
+                ['name' => 'لعبة وفرحة', 'source_category' => 'نشاط ترفيهي'],
+            );
+
+            ProjectSectorAssignment::updateOrCreate(
+                ['project_id' => $project->id, 'reference_year' => 2026],
+                ['institution_id' => $institution->id, 'sector_id' => $sector->id, 'source_name' => 'مشروع لعبة وفرحة'],
             );
 
             $period = Period::updateOrCreate(
@@ -83,28 +91,47 @@ class LobaWaFarhaMay2026SampleSeeder extends Seeder
                 ],
             );
 
+            // Once the real workbook has been imported (rowad:import-statistics), the sample is
+            // superseded: never recreate or re-activate it, so nothing is counted twice.
+            $realSource = ActivityRecord::where('project_id', $project->id)->where('is_active', true)
+                ->where(fn ($q) => $q->whereNull('data_source_id')->orWhere('data_source_id', '!=', $source->id))
+                ->exists();
+
             foreach (self::ROWS as $order => [$officeName, $male, $female]) {
-                $office = Office::updateOrCreate(
+                $office = Office::firstOrCreate(
                     ['institution_id' => $institution->id, 'slug' => $this->officeSlug($officeName)],
                     ['name' => $officeName, 'sort_order' => $order + 1],
                 );
 
-                BeneficiaryRecord::updateOrCreate(
+                if ($realSource) {
+                    continue;
+                }
+
+                ActivityRecord::firstOrCreate(
                     [
                         'project_id' => $project->id,
                         'office_id' => $office->id,
                         'period_id' => $period->id,
                         'measure_id' => $measure->id,
+                        'detail_key' => self::detailKey(),
                     ],
                     [
                         'institution_id' => $institution->id,
                         'data_source_id' => $source->id,
                         'male_count' => $male,
                         'female_count' => $female,
+                        'total_count' => $male + $female,
+                        'is_active' => true,
                     ],
                 );
             }
         });
+    }
+
+    /** Same key the migration gave the phase 1 rows: no activity path, occurrence 1. */
+    public static function detailKey(): string
+    {
+        return sha1(json_encode(['', '', '', '', '', 1]));
     }
 
     /** Fails loudly if the embedded rows stop matching the reference totals. */

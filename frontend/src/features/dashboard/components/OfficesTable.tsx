@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, SearchX } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { formatNumber, formatPercent, normalizeArabic } from '../../../lib/format'
 import type { OfficeRow, Summary } from '../../../types/api'
 
@@ -29,21 +29,7 @@ function compare(a: OfficeRow, b: OfficeRow, key: SortKey): number {
 export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: Props) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'total', dir: 'desc' })
-  const searchRef = useRef<HTMLInputElement>(null)
 
-  // "/" jumps to the search box unless the user is already typing somewhere.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null
-      const typing = target && (['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable)
-      if (event.key === '/' && !typing && !event.ctrlKey && !event.metaKey) {
-        event.preventDefault()
-        searchRef.current?.focus()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
 
   const visible = useMemo(() => {
     const needle = normalizeArabic(query)
@@ -70,13 +56,12 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
           <Search aria-hidden="true" className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
           <input
             id="office-search"
-            ref={searchRef}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="ابحث باسم المكتب… ( / )"
+            placeholder="ابحث باسم المكتب…"
             autoComplete="off"
-            className="h-11 w-full rounded-xl border border-line bg-white ps-10 pe-4 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-ink-muted hover:border-navy-300"
+            className="h-11 w-full rounded-xl border border-line bg-white ps-10 pe-4 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-ink-muted hover:border-ink-muted"
           />
         </div>
         <p className="text-sm text-ink-muted" aria-live="polite">
@@ -90,7 +75,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
           <caption className="sr-only">
             تفاصيل الاستفادات المسجلة حسب المكتب. يمكن الفرز بالنقر على عناوين الأعمدة.
           </caption>
-          <thead className="bg-navy-50">
+          <thead className="bg-paper">
             <tr>
               {COLUMNS.map((column) => {
                 const active = sort.key === column.key
@@ -100,10 +85,10 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
                     <button
                       type="button"
                       onClick={() => toggleSort(column.key)}
-                      className="flex min-h-12 w-full cursor-pointer items-center gap-1.5 px-4 hover:bg-navy-100"
+                      className="flex min-h-12 w-full cursor-pointer items-center gap-1.5 px-4 hover:bg-paper-deep"
                     >
                       {column.label}
-                      <Icon aria-hidden="true" className={`size-3.5 ${active ? 'text-brand-strong' : 'text-ink-muted/60'}`} />
+                      <Icon aria-hidden="true" className={`size-3.5 ${active ? 'text-brand-ink' : 'text-ink-muted/60'}`} />
                     </button>
                   </th>
                 )
@@ -114,14 +99,14 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
             {visible.map((row) => {
               const selected = row.slug === selectedOffice
               return (
-                <tr key={row.slug} className={`border-t border-line transition-colors hover:bg-navy-50 ${selected ? 'bg-brand-soft' : ''}`}>
+                <tr key={row.slug} className={`border-t border-line transition-colors hover:bg-paper ${selected ? 'bg-brand-wash' : ''}`}>
                   <th scope="row" className="p-0 text-start font-semibold text-ink">
                     <button
                       type="button"
                       onClick={() => onSelectOffice(row.slug)}
                       aria-pressed={selected}
                       title={selected ? 'إلغاء تصفية هذا المكتب' : 'تصفية حسب هذا المكتب'}
-                      className="flex min-h-12 w-full cursor-pointer items-center px-4 text-start hover:text-brand-strong"
+                      className="flex min-h-12 w-full cursor-pointer items-center px-4 text-start hover:text-brand-ink"
                     >
                       {row.name}
                     </button>
@@ -132,7 +117,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="num w-14 shrink-0 text-ink-soft">{formatPercent(row.share)}</span>
-                      <span aria-hidden="true" className="h-2 w-full min-w-16 max-w-40 overflow-hidden rounded-full bg-navy-100">
+                      <span aria-hidden="true" className="h-2 w-full min-w-16 max-w-40 overflow-hidden rounded-full bg-paper-deep">
                         <span className="block h-full rounded-full bg-total" style={{ width: `${row.share ?? 0}%` }} />
                       </span>
                     </div>
@@ -143,7 +128,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
           </tbody>
           {visible.length > 0 && (
             <tfoot>
-              <tr className="border-t-2 border-navy-200 bg-navy-50 font-extrabold text-ink">
+              <tr className="border-t-2 border-line-strong bg-paper font-extrabold text-ink">
                 <th scope="row" className="px-4 py-3 text-start">
                   الإجمالي (كل المكاتب في الفلتر)
                 </th>

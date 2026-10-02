@@ -11,26 +11,50 @@ Accept: application/json
 GET {{base}}/institutions
 Accept: application/json
 
-### خيارات الفلاتر
+### خيارات الفلاتر: المسارات الخمسة وكتالوج المشاريع (56) والفترات والمكاتب
 GET {{base}}/filters?institution=rowad
 Accept: application/json
 
-### خيارات الفلاتر بعد اختيار المشروع والفترة (المكاتب التي لها بيانات فقط)
-GET {{base}}/filters?institution=rowad&project=loba-wa-farha&period=2026-05
-Accept: application/json
-
-### لوحة العرض كاملة — المتوقع: ذكور 718، إناث 732، إجمالي 1450، مكاتب 7
+### النظرة العامة — كل السجلات المستوردة (الأسر في other_measures)
 GET {{base}}/dashboard?institution=rowad
 Accept: application/json
 
-### فلتر جرابلس — المتوقع: 120 / 130 / 250
-GET {{base}}/dashboard?institution=rowad&project=loba-wa-farha&period=2026-05&office=jarabulus
+### المسار: الثقافة والرياضة والتسلية والفنون — 11 مشروعًا مصنفًا
+GET {{base}}/dashboard?institution=rowad&sector=cul
 Accept: application/json
 
-### خطأ 422: مكتب لا ينتمي للمؤسسة
-GET {{base}}/dashboard?institution=rowad&office=unknown
+### مسار بلا بيانات — has_data=false، والأرقام null، و15 مشروعًا مصنفًا
+GET {{base}}/dashboard?institution=rowad&sector=dev
+Accept: application/json
+
+### المشروع مع مكتب جرابلس — المتوقع: 120 / 130 / 250
+GET {{base}}/dashboard?institution=rowad&sector=cul&project=loba-wa-farha&office=jarabulus
+Accept: application/json
+
+### خطأ 422: مشروع لا يتبع المسار المحدد
+GET {{base}}/dashboard?institution=rowad&sector=hlt&project=loba-wa-farha
 Accept: application/json
 
 ### خطأ 422: صيغة فترة غير صحيحة
 GET {{base}}/dashboard?institution=rowad&period=2026-13
+Accept: application/json
+
+### مستوى المشروع: الأنشطة الرئيسية (Level 2) لرواد المعرفة
+GET {{base}}/dashboard?institution=rowad&sector=edu&project=road-almaarf
+Accept: application/json
+
+### مستوى النشاط الرئيسي: الأنشطة الفرعية (Level 3) — مجموعها = إجمالي النشاط
+GET {{base}}/dashboard?institution=rowad&sector=edu&project=road-almaarf&main_activity=bkloryos
+Accept: application/json
+
+### مستوى النشاط الفرعي
+GET {{base}}/dashboard?institution=rowad&sector=edu&project=athr&main_activity=tlab-mnktaayn&sub_activity=tasaa
+Accept: application/json
+
+### سجلات بلا تصنيف لسنتها (2025)
+GET {{base}}/dashboard?institution=rowad&sector=unclassified
+Accept: application/json
+
+### خطأ 422: نشاط رئيسي لا يتبع المشروع
+GET {{base}}/dashboard?institution=rowad&project=athr&main_activity=bkloryos
 Accept: application/json
