@@ -24,8 +24,8 @@ class DataSource extends Model
         return $this->belongsTo(Institution::class);
     }
 
-    public function beneficiaryRecords(): HasMany
+    public function activityRecords(): HasMany
     {
-        return $this->hasMany(BeneficiaryRecord::class);
+        return $this->hasMany(ActivityRecord::class);
     }
 }

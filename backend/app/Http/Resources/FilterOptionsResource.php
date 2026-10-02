@@ -32,6 +32,17 @@ class FilterOptionsResource extends JsonResource
                 'sector' => $row['sector'] ? ['slug' => $row['sector']->slug, 'name' => $row['sector']->name] : null,
                 'has_data' => $row['has_data'],
             ])->values(),
+            'main_activities' => $this->options['main_activities']->map(fn ($row) => [
+                'slug' => $row['activity']->slug,
+                'name' => $row['activity']->name,
+                'category' => $row['activity']->category?->name,
+                'has_data' => $row['has_data'],
+            ])->values(),
+            'sub_activities' => $this->options['sub_activities']->map(fn ($row) => [
+                'slug' => $row['activity']->slug,
+                'name' => $row['activity']->name,
+                'has_data' => $row['has_data'],
+            ])->values(),
             'periods' => $this->options['periods']->map(fn ($p) => [
                 'key' => $p->key(),
                 'label' => $p->label(),

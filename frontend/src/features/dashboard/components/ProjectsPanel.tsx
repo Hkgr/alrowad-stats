@@ -20,6 +20,8 @@ interface Props {
  * the comparison chart only appears when at least two projects have data.
  */
 const INITIAL_COUNT = 12
+/** The chart compares the largest projects only; the list below always shows all of them. */
+const TOP = 10
 
 export function ProjectsPanel({ projects, showSector, onOpen }: Props) {
   const [query, setQuery] = useState('')
@@ -38,9 +40,12 @@ export function ProjectsPanel({ projects, showSector, onOpen }: Props) {
     <div className="space-y-4">
       {withData.length >= 2 && (
         <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+          {withData.length > TOP && (
+            <p className="text-sm font-bold text-ink-soft">أعلى {formatNumber(TOP)} مشاريع من حيث الاستفادات المسجلة</p>
+          )}
           <ComparisonBarChart
-            ariaLabel={`مقارنة الاستفادات المسجلة بين ${countLabel(withData.length, PROJECTS)}`}
-            items={withData.map((p) => ({
+            ariaLabel={`مقارنة الاستفادات المسجلة بين ${countLabel(Math.min(TOP, withData.length), PROJECTS)}`}
+            items={withData.slice(0, TOP).map((p) => ({
               key: p.slug,
               name: p.name,
               value: p.total ?? 0,

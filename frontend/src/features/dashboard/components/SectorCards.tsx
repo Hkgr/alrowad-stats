@@ -1,28 +1,33 @@
-import { BookOpen, Building2, HandHeart, HeartPulse, Layers, Palette, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { sectorColor } from '../../../components/charts/chartTheme'
 import { useReducedMotion } from '../../../hooks/useReducedMotion'
 import { formatNumber } from '../../../lib/format'
-import type { SectorRow } from '../../../types/api'
+import { themeFor, UNCLASSIFIED_THEME, type Theme } from '../../../lib/themes'
+import type { Dashboard, SliceFigures } from '../../../types/api'
 
-// Presentation only: an icon per track code from the reference list, with a neutral fallback.
-const ICONS: Record<string, LucideIcon> = {
-  EDU: BookOpen,
-  CUL: Palette,
-  DEV: Building2,
-  HLT: HeartPulse,
-  CHR: HandHeart,
+interface CardData extends SliceFigures {
+  slug: string
+  name: string
+  selected: boolean
+  classified_projects: number | null
+  theme: Theme
+  note?: string
 }
 
 interface Props {
-  sectors: SectorRow[]
+  sectors: Dashboard['sectors']
+  unclassified: Dashboard['unclassified']
   onSelect: (slug: string | null) => void
 }
 
-/** The five tracks as the main entry point. Selecting one narrows everything below it. */
-export function SectorCards({ sectors, onSelect }: Props) {
-  const anySelected = sectors.some((s) => s.selected)
-  const selectedSlug = sectors.find((s) => s.selected)?.slug
+/** The tracks as the main entry point (plus records without a track for their year). */
+export function SectorCards({ sectors, unclassified, onSelect }: Props) {
+  const cards: CardData[] = sectors.map((s) => ({ ...s, theme: themeFor(s.code) }))
+  if (unclassified) {
+    cards.push({ ...unclassified, classified_projects: null, theme: UNCLASSIFIED_THEME, note: 'بلا مرجع تصنيف لسنتها' })
+  }
+
+  const anySelected = cards.some((c) => c.selected)
+  const selectedSlug = cards.find((c) => c.selected)?.slug
   const listRef = useRef<HTMLUListElement>(null)
   const reduced = useReducedMotion()
 
@@ -40,54 +45,64 @@ export function SectorCards({ sectors, onSelect }: Props) {
 
   return (
     <section aria-label="المسارات">
-      <ul ref={listRef} className="scrollbar-none -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-5">
-        {sectors.map((sector, index) => {
-          const Icon = (sector.code && ICONS[sector.code]) || Layers
-          const color = sectorColor(index)
+      <ul
+        ref={listRef}
+        className={`scrollbar-none -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 ${
+          cards.length > 5 ? 'xl:grid-cols-6' : 'xl:grid-cols-5'
+        }`}
+      >
+        {cards.map((card) => {
+          const { theme } = card
           return (
-            <li key={sector.slug} data-slug={sector.slug} className="w-[15.5rem] shrink-0 snap-start sm:w-auto">
+            <li key={card.slug} data-slug={card.slug} className="w-[15rem] shrink-0 snap-start sm:w-auto">
               <button
                 type="button"
-                onClick={() => onSelect(sector.selected ? null : sector.slug)}
-                aria-pressed={sector.selected}
-                className={`group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white p-4 text-start shadow-card transition-[transform,box-shadow,border-color,opacity] duration-200 hover:-translate-y-0.5 hover:shadow-lift ${
-                  sector.selected
-                    ? 'border-brand ring-2 ring-brand/25'
-                    : anySelected
-                      ? 'border-line opacity-75 hover:opacity-100'
-                      : 'border-line'
+                onClick={() => onSelect(card.selected ? null : card.slug)}
+                aria-pressed={card.selected}
+                className={`group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border p-4 text-start shadow-card transition-[transform,box-shadow,border-color,opacity] duration-200 hover:-translate-y-0.5 hover:shadow-lift ${
+                  anySelected && !card.selected ? 'opacity-75 hover:opacity-100' : ''
                 }`}
+                style={{
+                  background: card.selected ? theme.light : '#ffffff',
+                  borderColor: card.selected ? theme.primary : 'var(--color-line)',
+                  boxShadow: card.selected ? `0 0 0 3px ${theme.primary}33` : undefined,
+                }}
               >
-                <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: color }} />
+                <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: theme.primary }} />
                 <span className="flex items-center gap-2.5">
                   <span
-                    className="grid size-9 shrink-0 place-items-center rounded-xl"
-                    style={{ background: `${color}1a`, color }}
+                    className="grid size-10 shrink-0 place-items-center rounded-xl text-xl"
+                    style={{ background: theme.light, boxShadow: `inset 0 0 0 1px ${theme.primary}33` }}
                     aria-hidden="true"
                   >
-                    <Icon className="size-[1.15rem]" />
+                    {theme.emoji}
                   </span>
-                  <span className="min-w-0 text-sm font-bold leading-snug text-ink">{sector.name}</span>
+                  <span className="min-w-0 text-sm font-bold leading-snug" style={{ color: theme.dark }}>
+                    {card.name}
+                  </span>
                 </span>
 
-                <span className="mt-3 flex items-end justify-between gap-2">
-                  {sector.has_data ? (
-                    <span>
-                      <span className="num text-2xl font-extrabold leading-none text-ink">{formatNumber(sector.total)}</span>
+                <span className="mt-3">
+                  {card.has_data ? (
+                    <>
+                      <span className="num text-2xl font-extrabold leading-none text-ink">{formatNumber(card.total)}</span>
                       <span className="mt-1 block text-xs text-ink-muted">استفادة مسجلة</span>
-                    </span>
+                    </>
                   ) : (
                     <span className="text-sm font-semibold text-ink-muted">لا توجد بيانات</span>
                   )}
                 </span>
 
-                <span className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-line pt-2.5 text-xs text-ink-soft">
+                <span className="mt-auto flex flex-wrap gap-x-3 gap-y-1 border-t border-line pt-2.5 text-xs text-ink-soft [margin-top:0.75rem]">
+                  {card.classified_projects !== null && (
+                    <span>
+                      مصنفة: <span className="num font-bold text-ink">{formatNumber(card.classified_projects)}</span>
+                    </span>
+                  )}
                   <span>
-                    مشاريع مصنفة: <span className="num font-bold text-ink">{formatNumber(sector.classified_projects)}</span>
+                    لديها بيانات: <span className="num font-bold text-ink">{formatNumber(card.projects_with_data ?? 0)}</span>
                   </span>
-                  <span>
-                    لديها بيانات: <span className="num font-bold text-ink">{formatNumber(sector.projects_with_data ?? 0)}</span>
-                  </span>
+                  {card.note && <span className="w-full text-ink-muted">{card.note}</span>}
                 </span>
               </button>
             </li>

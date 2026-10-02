@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\BeneficiaryRecord;
+use App\Models\ActivityRecord;
 use App\Models\Institution;
 use App\Models\Measure;
 use App\Models\Office;
@@ -14,6 +14,7 @@ use App\Services\Classification\ProjectClassificationImporter;
 use App\Support\ArabicName;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Records;
 use Tests\Support\XlsxFixture;
 use Tests\TestCase;
 
@@ -123,9 +124,9 @@ class ProjectClassificationImportTest extends TestCase
         $this->import();
 
         // Statuses and numbers in the workbook never become records.
-        $this->assertSame(7, BeneficiaryRecord::count());
-        $this->assertSame(718, (int) BeneficiaryRecord::sum('male_count'));
-        $this->assertSame(732, (int) BeneficiaryRecord::sum('female_count'));
+        $this->assertSame(7, ActivityRecord::count());
+        $this->assertSame(718, (int) ActivityRecord::sum('male_count'));
+        $this->assertSame(732, (int) ActivityRecord::sum('female_count'));
         $this->assertSame(1, Period::count());
     }
 
@@ -145,10 +146,10 @@ class ProjectClassificationImportTest extends TestCase
         $institution = Institution::where('slug', 'rowad')->first();
         $project = Project::where('slug', 'loba-wa-farha')->first();
         $period2025 = Period::create(['institution_id' => $institution->id, 'year' => 2025, 'month' => 5]);
-        BeneficiaryRecord::create([
+        Records::make([
             'institution_id' => $institution->id, 'project_id' => $project->id,
             'office_id' => Office::where('slug', 'afrin')->value('id'), 'period_id' => $period2025->id,
-            'measure_id' => Measure::value('id'), 'male_count' => 5, 'female_count' => 5,
+            'measure_id' => Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id'), 'male_count' => 5, 'female_count' => 5,
         ]);
 
         // The 2026 sector only covers 2026 records...

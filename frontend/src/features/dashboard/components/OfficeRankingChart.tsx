@@ -6,11 +6,15 @@ import type { ComparisonRow } from '../../../types/api'
 
 interface Props {
   rows: ComparisonRow[]
+  /** Track colour of the current scope (institution orange on the overview). */
+  color?: string
+  /** Mark outline for a colour with low contrast on white. */
+  outline?: string
   onSelectOffice: (slug: string) => void
 }
 
 /** Horizontal ranking of offices by total. Clicking a bar toggles the office filter. */
-export function OfficeRankingChart({ rows, onSelectOffice }: Props) {
+export function OfficeRankingChart({ rows, onSelectOffice, color = chartColors.total, outline }: Props) {
   const hasSelection = rows.some((row) => row.selected)
 
   const option = useMemo(() => {
@@ -70,13 +74,13 @@ export function OfficeRankingChart({ rows, onSelectOffice }: Props) {
             key: row.slug,
             row,
             value: row.total,
-            itemStyle: { color: chartColors.total, opacity: hasSelection && !row.selected ? DIMMED_OPACITY : 1 },
+            itemStyle: { color, borderColor: outline, borderWidth: outline ? 1.5 : 0, opacity: hasSelection && !row.selected ? DIMMED_OPACITY : 1 },
             label: { opacity: hasSelection && !row.selected ? 0.45 : 1 },
           })),
         },
       ],
     }
-  }, [rows, hasSelection])
+  }, [rows, hasSelection, color, outline])
 
   const summary = rows.map((r) => `${r.name} ${intl.format(r.total)}`).join('، ')
 
@@ -84,7 +88,7 @@ export function OfficeRankingChart({ rows, onSelectOffice }: Props) {
     <EChart
       option={option}
       ariaLabel={`رسم أعمدة أفقي يرتب المكاتب حسب إجمالي الاستفادات المسجلة: ${summary}`}
-      className="h-[22rem]"
+      style={{ height: Math.max(220, rows.length * 34 + 48) }}
       onSelect={onSelectOffice}
     />
   )

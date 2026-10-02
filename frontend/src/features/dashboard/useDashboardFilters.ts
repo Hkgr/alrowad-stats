@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { BreakdownView, FilterKey, FilterState } from '../../types/api'
 
-const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'period', 'office']
+const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'main_activity', 'sub_activity', 'period', 'office']
 const VIEWS: BreakdownView[] = ['projects', 'offices', 'sectors']
 
 type Changes = Partial<FilterState> & { view?: BreakdownView | null }
@@ -10,7 +10,7 @@ type Changes = Partial<FilterState> & { view?: BreakdownView | null }
 /**
  * The single exploration state (level, filters, tab). It lives in the URL query string, so a
  * view can be shared, and every navigation is a history entry, so the browser Back button
- * walks back through project → sector → overview.
+ * walks back through sub activity → main activity → project → sector → overview.
  */
 export function useDashboardFilters() {
   const [params, setParams] = useSearchParams()
@@ -20,6 +20,8 @@ export function useDashboardFilters() {
       institution: params.get('institution'),
       sector: params.get('sector'),
       project: params.get('project'),
+      main_activity: params.get('main_activity'),
+      sub_activity: params.get('sub_activity'),
       period: params.get('period'),
       office: params.get('office'),
     }),
@@ -48,12 +50,20 @@ export function useDashboardFilters() {
     [setParams],
   )
 
-  const goOverview = useCallback(() => update({ sector: null, project: null }), [update])
-  const goSector = useCallback((slug: string | null) => update({ sector: slug, project: null }), [update])
-  const goProject = useCallback(
-    (slug: string, sectorSlug: string | null) => update({ project: slug, sector: sectorSlug }),
+  // Moving up or sideways drops the levels below, so no stale main/sub activity survives.
+  const goOverview = useCallback(() => update({ sector: null, project: null, main_activity: null, sub_activity: null }), [update])
+  const goSector = useCallback(
+    (slug: string | null) => update({ sector: slug, project: null, main_activity: null, sub_activity: null }),
     [update],
   )
+  const goProject = useCallback(
+    (slug: string | null, sectorSlug: string | null) =>
+      update({ project: slug, sector: sectorSlug, main_activity: null, sub_activity: null }),
+    [update],
+  )
+  /** The main activity belongs to the current project; changing it drops the sub activity. */
+  const goMainActivity = useCallback((slug: string | null) => update({ main_activity: slug, sub_activity: null }), [update])
+  const goSubActivity = useCallback((slug: string | null) => update({ sub_activity: slug }), [update])
   const setPeriod = useCallback((key: string | null) => update({ period: key }), [update])
   const setView = useCallback((next: BreakdownView) => update({ view: next }, { replace: true }), [update])
 
@@ -65,11 +75,16 @@ export function useDashboardFilters() {
 
   /** Back to the institution overview with no filters (the institution itself is kept). */
   const reset = useCallback(
-    () => update({ sector: null, project: null, period: null, office: null, view: null }),
+    () => update({ sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null, view: null }),
     [update],
   )
 
-  const hasActiveFilters = Boolean(filters.sector || filters.project || filters.period || filters.office)
+  const hasActiveFilters = Boolean(
+    filters.sector || filters.project || filters.main_activity || filters.sub_activity || filters.period || filters.office,
+  )
 
-  return { filters, view, update, goOverview, goSector, goProject, setPeriod, setView, toggleOffice, reset, hasActiveFilters }
+  return {
+    filters, view, update, goOverview, goSector, goProject, goMainActivity, goSubActivity,
+    setPeriod, setView, toggleOffice, reset, hasActiveFilters,
+  }
 }

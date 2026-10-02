@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\BeneficiaryRecord;
+use App\Models\ActivityRecord;
 use App\Models\Institution;
 use App\Models\Measure;
 use App\Models\Office;
@@ -13,6 +13,7 @@ use App\Models\Sector;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Records;
 use Tests\TestCase;
 
 class DashboardApiTest extends TestCase
@@ -123,14 +124,14 @@ class DashboardApiTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(7, BeneficiaryRecord::count());
+        $this->assertSame(7, ActivityRecord::count());
         $this->assertSame(7, Office::count());
         $this->assertSame(1, Project::count());
         $this->assertSame(1, Sector::count());
         $this->assertSame(1, ProjectSectorAssignment::count());
         $this->assertSame(1, Period::count());
         $this->assertSame(1, Institution::count());
-        $this->assertSame(1, Measure::count());
+        $this->assertSame(2, Measure::count()); // people + families
         $this->getJson(self::BASE)->assertJsonPath('data.summary.total', 1450);
     }
 
@@ -195,12 +196,12 @@ class DashboardApiTest extends TestCase
 
         $this->expectException(QueryException::class);
 
-        BeneficiaryRecord::create([
+        Records::make([
             'institution_id' => $rowad->id,
             'project_id' => $other['project']->id,
             'office_id' => Office::where('slug', 'jarabulus')->value('id'),
             'period_id' => Period::where('institution_id', $rowad->id)->value('id'),
-            'measure_id' => Measure::value('id'),
+            'measure_id' => Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id'),
             'male_count' => 1,
             'female_count' => 1,
         ]);
@@ -262,10 +263,10 @@ class DashboardApiTest extends TestCase
         $second = Project::create(['institution_id' => $institution->id, 'slug' => 'second', 'name' => 'مشروع ثان']);
         ProjectSectorAssignment::create(['institution_id' => $institution->id, 'project_id' => $second->id, 'sector_id' => $cul->id, 'reference_year' => 2026]);
         foreach (['jarabulus', 'afrin'] as $slug) {
-            BeneficiaryRecord::create([
+            Records::make([
                 'institution_id' => $institution->id, 'project_id' => $second->id,
                 'office_id' => Office::where('slug', $slug)->value('id'), 'period_id' => Period::value('id'),
-                'measure_id' => Measure::value('id'), 'male_count' => 1, 'female_count' => 1,
+                'measure_id' => Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id'), 'male_count' => 1, 'female_count' => 1,
             ]);
         }
 
@@ -295,12 +296,12 @@ class DashboardApiTest extends TestCase
         $office = Office::create(['institution_id' => $institution->id, 'slug' => 'other-office', 'name' => 'مكتب آخر']);
         $period = Period::create(['institution_id' => $institution->id, 'year' => 2026, 'month' => 7]);
 
-        BeneficiaryRecord::create([
+        Records::make([
             'institution_id' => $institution->id,
             'project_id' => $project->id,
             'office_id' => $office->id,
             'period_id' => $period->id,
-            'measure_id' => Measure::value('id'),
+            'measure_id' => Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id'),
             'male_count' => 10,
             'female_count' => 20,
         ]);

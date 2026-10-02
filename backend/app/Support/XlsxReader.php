@@ -83,6 +83,79 @@ final class XlsxReader
         return $rows;
     }
 
+    /**
+     * Every cell of a sheet with its formula, plus merged ranges — what the statistics importer
+     * needs to tell a typed value from a formula result and to read merged groups correctly.
+     *
+     * @return array{cells: array<int, array<string, array{v: ?string, formula: bool, f: ?string}>>, merges: list<string>}
+     */
+    public function sheet(string $sheet): array
+    {
+        if (! isset($this->sheets[$sheet])) {
+            throw new RuntimeException("Sheet not found: {$sheet}");
+        }
+
+        $xml = $this->xml($this->sheets[$sheet]);
+        $cells = [];
+        $shared = []; // si => master formula text
+
+        foreach ($xml->sheetData->row as $row) {
+            foreach ($row->c as $cell) {
+                $ref = (string) $cell['r'];
+                if (! preg_match('/^([A-Z]+)(\d+)$/', $ref, $m)) {
+                    continue;
+                }
+                $formula = isset($cell->f);
+                $text = null;
+                if ($formula) {
+                    $text = trim((string) $cell->f) !== '' ? (string) $cell->f : null;
+                    $si = (string) $cell->f['si'];
+                    if ($si !== '') {
+                        if ($text !== null) {
+                            $shared[$si] = $text;
+                        } else {
+                            $text = $shared[$si] ?? null;
+                        }
+                    }
+                }
+                $cells[(int) $m[2]][$m[1]] = ['v' => $this->cellValue($cell), 'formula' => $formula, 'f' => $text];
+            }
+        }
+        ksort($cells);
+
+        $merges = [];
+        if (isset($xml->mergeCells)) {
+            foreach ($xml->mergeCells->mergeCell as $merge) {
+                $merges[] = (string) $merge['ref'];
+            }
+        }
+
+        return ['cells' => $cells, 'merges' => $merges];
+    }
+
+    /** Converts a column label (A, B, …, AA) to its 1-based index. */
+    public static function columnIndex(string $letters): int
+    {
+        $index = 0;
+        foreach (str_split($letters) as $char) {
+            $index = $index * 26 + (ord($char) - 64);
+        }
+
+        return $index;
+    }
+
+    public static function columnLetter(int $index): string
+    {
+        $letters = '';
+        while ($index > 0) {
+            $mod = ($index - 1) % 26;
+            $letters = chr(65 + $mod).$letters;
+            $index = intdiv($index - 1, 26);
+        }
+
+        return $letters;
+    }
+
     private function cellValue(SimpleXMLElement $cell): ?string
     {
         $type = (string) $cell['t'];

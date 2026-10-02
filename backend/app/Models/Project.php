@@ -21,9 +21,9 @@ class Project extends Model
         return $this->hasMany(ProjectSectorAssignment::class);
     }
 
-    public function beneficiaryRecords(): HasMany
+    public function activityRecords(): HasMany
     {
-        return $this->hasMany(BeneficiaryRecord::class);
+        return $this->hasMany(ActivityRecord::class);
     }
 
     /** The sector this project belongs to in the given reference year, or null when unclassified. */

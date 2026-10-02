@@ -16,6 +16,11 @@ export interface ProjectRef {
   name: string
 }
 
+export interface ActivityRef {
+  slug: string
+  name: string
+}
+
 export interface PeriodOption {
   key: string // "2026-05"
   label: string // "أيار 2026"
@@ -28,6 +33,8 @@ export interface FilterOptions {
   classification_year: number | null
   sectors: (SectorRef & { classified_projects: number })[]
   projects: (ProjectRef & { sector: { slug: string; name: string } | null; has_data: boolean })[]
+  main_activities: (ActivityRef & { category: string | null; has_data: boolean })[]
+  sub_activities: (ActivityRef & { has_data: boolean })[]
   periods: PeriodOption[]
   offices: { slug: string; name: string }[]
 }
@@ -41,6 +48,7 @@ export interface Measure {
   record_level_label: string
   aggregation: string
   aggregation_label: string
+  items_label: string | null
   description: string | null
 }
 
@@ -50,6 +58,8 @@ export interface SliceFigures {
   total: number | null
   male: number | null
   female: number | null
+  /** Part of the total whose gender the source does not report (not zero, not guessed). */
+  gender_unreported: number | null
   projects_with_data: number | null
   offices_count: number | null
 }
@@ -67,6 +77,28 @@ export interface ProjectRow extends ProjectRef, SliceFigures {
 export interface PeriodRow extends SliceFigures {
   key: string
   label: string
+  year: number
+  month: number
+  selected: boolean
+}
+
+export interface MainActivityRow extends ActivityRef, SliceFigures {
+  category: string | null
+  sub_activities_count: number
+  selected: boolean
+}
+
+export interface SubActivityRow extends ActivityRef, SliceFigures {
+  selected: boolean
+}
+
+export interface OtherMeasure {
+  code: string
+  name: string
+  unit_label: string
+  total: number
+  items_label: string | null
+  items: number | null
 }
 
 export interface OfficeRow {
@@ -94,12 +126,15 @@ export interface Summary {
   female: number | null
   male_share: number | null
   female_share: number | null
+  gender_unreported: number | null
+  disabled: number | null
   offices_count: number | null
+  records: number | null
   projects_with_data: number
   classified_projects: number
 }
 
-export type Level = 'overview' | 'sector' | 'project'
+export type Level = 'overview' | 'sector' | 'project' | 'main_activity' | 'sub_activity'
 
 export interface Dashboard {
   institution: Institution
@@ -108,6 +143,8 @@ export interface Dashboard {
   filters: {
     sector: SectorRef | null
     project: ProjectRef | null
+    main_activity: ActivityRef | null
+    sub_activity: ActivityRef | null
     period: { key: string; label: string } | null
     office: { slug: string; name: string } | null
   }
@@ -116,11 +153,22 @@ export interface Dashboard {
   has_data: boolean
   summary: Summary
   sectors: SectorRow[]
-  unclassified: SliceFigures | null
+  unclassified: (SectorRef & SliceFigures & { selected: boolean }) | null
   projects: ProjectRow[]
+  activities: {
+    main_available: boolean | null
+    sub_available: boolean | null
+    main: MainActivityRow[]
+    without_main: SliceFigures | null
+    sub: SubActivityRow[]
+    without_sub: SliceFigures | null
+    /** Level 1 of the project sheet: the source's own grouping, not an activity level. */
+    categories: (SliceFigures & { name: string })[]
+  }
   periods: PeriodRow[]
   offices: OfficeRow[]
   comparison: ComparisonRow[]
+  other_measures: OtherMeasure[]
 }
 
 /** The exploration state shared by the URL, the controls and every query. */
@@ -128,6 +176,8 @@ export interface FilterState {
   institution: string | null
   sector: string | null
   project: string | null
+  main_activity: string | null
+  sub_activity: string | null
   period: string | null
   office: string | null
 }

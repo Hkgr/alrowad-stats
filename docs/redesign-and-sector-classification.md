@@ -1,5 +1,7 @@
 # إعادة تصميم تجربة العرض وتصنيف المشاريع حسب المسارات
 
+> تحديث لاحق: استُوردت الأرقام الكاملة، وأضيفت الأنشطة الرئيسية والفرعية، وثيم لكل مسار، وتغيرت ألوان الجنس. انظر [statistics-activities-themes.md](statistics-activities-themes.md).
+
 الفرع: `feature/visual-redesign-and-sector-classification`
 
 ## ما نُفّذ
@@ -93,12 +95,7 @@ php artisan rowad:import-classification "..\data\Projects List_2026_09-29.xlsx"
 
 ## لقطات
 
-| مكتبي | جوال |
-|---|---|
-| ![النظرة العامة](screenshots/desktop-overview.png) | ![النظرة العامة — جوال](screenshots/mobile-overview.png) |
-| ![المسار](screenshots/desktop-sector.png) | ![المشروع — جوال](screenshots/mobile-project.png) |
-| ![المشروع](screenshots/desktop-project.png) | |
-| ![مسار بلا بيانات](screenshots/desktop-empty-sector.png) | |
+استُبدلت لقطات هذه المرحلة بلقطات الواجهة الحالية (ثيمات المسارات والأنشطة): انظر [statistics-activities-themes.md](statistics-activities-themes.md#7-اللقطات).
 
 ## ما بقي
 

@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\BeneficiaryRecord;
+use App\Models\ActivityRecord;
 use App\Models\DataSource;
 use App\Models\Institution;
 use App\Models\Measure;
@@ -28,7 +28,8 @@ use RuntimeException;
  * that single 2026 link so the sample works on its own; `php artisan rowad:import-classification`
  * imports the full list and matches this same project instead of duplicating it.
  *
- * Re-running is safe: every row is keyed by its natural key and updated in place.
+ * Re-running is safe: rows are created only when missing, and never once the real workbook has
+ * been imported (the importer supersedes these sample rows).
  */
 class LobaWaFarhaMay2026SampleSeeder extends Seeder
 {
@@ -90,28 +91,47 @@ class LobaWaFarhaMay2026SampleSeeder extends Seeder
                 ],
             );
 
+            // Once the real workbook has been imported (rowad:import-statistics), the sample is
+            // superseded: never recreate or re-activate it, so nothing is counted twice.
+            $realSource = ActivityRecord::where('project_id', $project->id)->where('is_active', true)
+                ->where(fn ($q) => $q->whereNull('data_source_id')->orWhere('data_source_id', '!=', $source->id))
+                ->exists();
+
             foreach (self::ROWS as $order => [$officeName, $male, $female]) {
-                $office = Office::updateOrCreate(
+                $office = Office::firstOrCreate(
                     ['institution_id' => $institution->id, 'slug' => $this->officeSlug($officeName)],
                     ['name' => $officeName, 'sort_order' => $order + 1],
                 );
 
-                BeneficiaryRecord::updateOrCreate(
+                if ($realSource) {
+                    continue;
+                }
+
+                ActivityRecord::firstOrCreate(
                     [
                         'project_id' => $project->id,
                         'office_id' => $office->id,
                         'period_id' => $period->id,
                         'measure_id' => $measure->id,
+                        'detail_key' => self::detailKey(),
                     ],
                     [
                         'institution_id' => $institution->id,
                         'data_source_id' => $source->id,
                         'male_count' => $male,
                         'female_count' => $female,
+                        'total_count' => $male + $female,
+                        'is_active' => true,
                     ],
                 );
             }
         });
+    }
+
+    /** Same key the migration gave the phase 1 rows: no activity path, occurrence 1. */
+    public static function detailKey(): string
+    {
+        return sha1(json_encode(['', '', '', '', '', 1]));
     }
 
     /** Fails loudly if the embedded rows stop matching the reference totals. */

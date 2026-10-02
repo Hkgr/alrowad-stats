@@ -39,8 +39,8 @@ class Institution extends Model
         return $this->hasMany(DataSource::class);
     }
 
-    public function beneficiaryRecords(): HasMany
+    public function activityRecords(): HasMany
     {
-        return $this->hasMany(BeneficiaryRecord::class);
+        return $this->hasMany(ActivityRecord::class);
     }
 }

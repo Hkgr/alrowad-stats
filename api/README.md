@@ -9,15 +9,17 @@
 - للقراءة فقط وبلا مصادقة حاليًا؛ المرحلة اللاحقة تضعها خلف `auth:sanctum`.
 - الأعداد صحيحة كاملة (بلا اختصار). النسب `*_share`/`share` نسبة مئوية بخانة عشرية واحدة.
 - **غياب البيانات ليس صفرًا**: عند عدم وجود سجلات تكون القيم `null` و`has_data: false`.
-- القياس الوحيد حاليًا: «الاستفادات المسجلة» (`registered_benefits`). لا تُجمع قياسات مختلفة الوحدة في رقم واحد.
+- القياس الرئيسي: «الاستفادات المسجلة» (`registered_benefits`)؛ والأسر (`households_served`) في `other_measures`. لا تُجمع قياسات مختلفة الوحدة.
 
 ## الفلاتر (Query String)
 
 | المعامل | مطلوب | الصيغة | ملاحظات |
 |---|---|---|---|
 | `institution` | نعم | slug المؤسسة، مثل `rowad` | يجب أن تكون موجودة وفعالة |
-| `sector` | لا | slug المسار، مثل `cul` | يجب أن ينتمي للمؤسسة |
+| `sector` | لا | slug المسار، مثل `cul`، أو `unclassified` | يجب أن ينتمي للمؤسسة؛ `unclassified` = سجلات بلا تصنيف لسنة فترتها |
 | `project` | لا | slug المشروع | يجب أن ينتمي للمؤسسة، ولـ`sector` إن حُدد |
+| `main_activity` | لا | slug النشاط الرئيسي (Level 2) | يتطلب `project` ويجب أن يتبعه |
+| `sub_activity` | لا | slug النشاط الفرعي (Level 3) | يتطلب `main_activity` ويجب أن يتبعه |
 | `period` | لا | `YYYY-MM` مثل `2026-05` | يجب أن توجد الفترة للمؤسسة |
 | `office` | لا | slug المكتب | يجب أن ينتمي للمؤسسة |
 
@@ -55,7 +57,9 @@
 { "data": [ { "slug": "rowad", "name": "مؤسسة الرواد" } ] }
 ```
 
-## `GET /api/v1/filters?institution=rowad[&sector=…][&project=…][&period=…]`
+## `GET /api/v1/filters?institution=rowad[&sector=…][&project=…][&main_activity=…][&sub_activity=…][&period=…]`
+
+إضافة لما يلي: `main_activities` (أنشطة المشروع المحدد: `slug`, `name`, `category`, `has_data`) و`sub_activities` (أنشطة النشاط الرئيسي المحدد).
 
 - `sectors`: كل مسارات المؤسسة بترتيب الملف المرجعي، مع عدد المشاريع المصنفة في سنة التصنيف.
 - `projects`: **كتالوج البحث** — كل مشروع مصنف في سنة التصنيف (مع أو بلا بيانات)، وأي مشروع غير مصنف له سجلات.
@@ -77,7 +81,10 @@
 }
 ```
 
-## `GET /api/v1/dashboard?institution=rowad[&sector=…][&project=…][&period=…][&office=…]`
+## `GET /api/v1/dashboard?institution=rowad[&sector=…][&project=…][&main_activity=…][&sub_activity=…][&period=…][&office=…]`
+
+الأرقام كلها من `activity_records` الفعالة لقياس «الاستفادات المسجلة»؛ من مستوى المشروع فما دون يكون المسار سياقًا للتصفح فقط
+(أرقام المشروع تشمل كل سنواته). مثال مختصر (الحقول الجديدة في هذه المرحلة: `activities`، `other_measures`، `gender_unreported`، `periods[].selected`):
 
 كل ما تعرضه الواجهة، محسوبًا في الـbackend (`BeneficiaryDashboardService`) من نفس السجلات:
 
@@ -123,13 +130,16 @@
 
 | الحقل | المعنى |
 |---|---|
-| `level` | `overview` (بلا مسار ولا مشروع)، `sector`، أو `project`. |
+| `level` | `overview`، `sector`، `project`، `main_activity`، أو `sub_activity`. |
 | `active_sector` | المسار المحدد، أو مسار المشروع المحدد في سنة التصنيف. |
-| `summary` | مجاميع النطاق بعد **كل** الفلاتر. `total = male + female`. القيم `null` عند `has_data=false`. `offices_count` و`projects_with_data` تُحسب بـ`DISTINCT`. `classified_projects`: المشاريع المصنفة في المسار النشط (أو كلها) لسنة التصنيف. |
+| `summary` | مجاميع النطاق بعد **كل** الفلاتر. `total` مجموع إجماليات السجلات؛ `male`/`female` مجموع المذكور فقط و`gender_unreported = total − male − female` (جنس غير مذكور في المصدر، لا يُقسَّم). `disabled` جزء من `total`. القيم `null` عند `has_data=false`. `offices_count` و`projects_with_data` تُحسب بـ`DISTINCT`. `classified_projects`: المشاريع المصنفة في المسار النشط (أو كلها) لسنة التصنيف. |
 | `sectors` | كل المسارات لبطاقات المدخل. أرقامها تحترم `period` و`office` ولا تتأثر بـ`sector`/`project` حتى تبقى قابلة للمقارنة. |
 | `unclassified` | سجلات لا يملك مشروعها تصنيفًا لسنة فترتها؛ `null` إن لم توجد. |
 | `projects` | مشاريع المسار النشط (أو كل المشاريع المصنفة + غير المصنفة ذات السجلات). المشروع بلا سجلات يظهر بـ`has_data=false` وقيم `null`. |
-| `periods` | الفترات التي لها سجلات بعد كل الفلاتر، مع أرقامها. لا يوجد حقل نمو أو اتجاه. |
+| `periods` | كل الفترات التي لها سجلات في النطاق (فلتر الفترة لا يُطبَّق هنا، والمحددة `selected: true`) مع أرقامها. لا يوجد حقل نمو أو اتجاه. |
+| `activities` | `main_available`/`sub_available` (هل يوجد Level 2/3 في المصدر؛ `null` خارج مستواه)، `main[]` (عند المشروع: `slug`, `name`, `category`, `sub_activities_count`, `selected` + الأرقام)، `without_main` (سجلات بلا نشاط رئيسي)، `sub[]` و`without_sub` (عند النشاط الرئيسي)، و`categories[]` (Level 1 لملف المشروع — تصنيف المصدر وليس نشاطًا). مجموع `sub[]` + `without_sub` = إجمالي النشاط الرئيسي. |
+| `other_measures` | قياسات بوحدة أخرى في النطاق نفسه، مثل `households_served`: `total` (أسر)، `items` و`items_label` (الأضاحي). لا تُضاف إلى `summary`. |
+| `unclassified` | كبطاقة مسار (`slug: "unclassified"`, `name: "غير مصنف"`) مع أرقامها و`selected`. |
 | `offices` | صفوف المكاتب بعد كل الفلاتر مرتبة تنازليًا؛ `share` نسبة المكتب من `summary.total`. |
 | `comparison` | نفس النطاق دون فلتر المكتب، والمكتب المحدد `selected: true` (لإبراز الاختيار في الرسوم). |
 | `sources` | للتتبع فقط؛ الواجهة لا تعرضه. |

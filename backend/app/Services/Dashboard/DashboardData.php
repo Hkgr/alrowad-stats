@@ -3,29 +3,32 @@
 namespace App\Services\Dashboard;
 
 use App\Models\DataSource;
+use App\Models\MainActivity;
 use App\Models\Measure;
 use App\Models\Period;
 use App\Models\Project;
+use App\Models\ProjectCategory;
 use App\Models\Sector;
+use App\Models\SubActivity;
 use Illuminate\Support\Collection;
 
 /**
- * Everything the dashboard shows, computed once by BeneficiaryDashboardService.
- * Cards, charts and tables are views of these rows, so they can never disagree.
+ * Everything the dashboard shows, computed once by BeneficiaryDashboardService from the same
+ * active records, so cards, charts and tables can never disagree.
  */
 final readonly class DashboardData
 {
     /**
-     * @param  list<OfficeFigures>  $offices  Rows inside all filters (cards, gender split, office table).
-     * @param  list<OfficeFigures>  $comparison  Same scope ignoring the office filter; the selected office is flagged.
-     * @param  list<array{sector: Sector, classified: int, figures: ?Figures}>  $sectors  Every sector; figures ignore sector/project filters.
-     * @param  ?Figures  $unclassified  Records whose project has no sector for its period's year (null when none).
-     * @param  list<array{project: Project, sector: ?Sector, figures: ?Figures}>  $projects  Projects of the current sector (or all).
-     * @param  list<array{period: Period, figures: Figures}>  $periods  Periods with records inside all filters.
-     * @param  ?Sector  $activeSector  Selected sector, or the selected project's sector.
-     * @param  int  $classifiedProjects  Projects classified in the current scope (sector or all) for the classification year.
-     * @param  ?Figures  $totals  All filters applied; null when there are no records.
-     * @param  Collection<int, DataSource>  $sources  Sources behind the figures (kept for traceability, not displayed).
+     * @param  list<OfficeFigures>  $offices  Rows inside all filters.
+     * @param  list<OfficeFigures>  $comparison  Same scope ignoring the office filter (selected flagged).
+     * @param  list<array{sector: Sector, classified: int, figures: ?Figures}>  $sectors
+     * @param  list<array{project: Project, sector: ?Sector, figures: ?Figures}>  $projects
+     * @param  list<array{period: Period, figures: Figures}>  $periods  Every period of the scope (period filter ignored, selected flagged by key).
+     * @param  list<array{activity: MainActivity, figures: ?Figures, subs: int}>  $mainActivities
+     * @param  list<array{activity: SubActivity, figures: ?Figures}>  $subActivities
+     * @param  list<array{category: ProjectCategory, figures: ?Figures}>  $categories
+     * @param  list<array{measure: Measure, total: int, items: ?int, records: int}>  $otherMeasures
+     * @param  Collection<int, DataSource>  $sources
      */
     public function __construct(
         public DashboardFilters $filters,
@@ -39,6 +42,12 @@ final readonly class DashboardData
         public ?Sector $activeSector,
         public int $classifiedProjects,
         public ?Figures $totals,
+        public array $mainActivities,
+        public ?Figures $withoutMainActivity,
+        public array $subActivities,
+        public ?Figures $withoutSubActivity,
+        public array $categories,
+        public array $otherMeasures,
         public Collection $sources,
     ) {}
 

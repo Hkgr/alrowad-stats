@@ -20,7 +20,7 @@ function Figure({ label, value, caption, accent, icon: Icon, featured }: FigureP
   return (
     <article
       className={`relative min-w-0 overflow-hidden rounded-2xl border p-4 sm:p-5 ${
-        featured ? 'border-brand/30 bg-gradient-to-bl from-brand-wash to-white' : 'border-line bg-white'
+        featured ? 'border-[color-mix(in_srgb,var(--t-primary)_35%,transparent)] bg-gradient-to-bl from-[var(--t-light)] to-white' : 'border-line bg-white'
       }`}
     >
       <span aria-hidden="true" className="absolute inset-y-4 start-0 w-1 rounded-e-full" style={{ background: accent }} />
@@ -46,24 +46,31 @@ export function FiguresBand({ summary }: { summary: Summary }) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
       <div className="col-span-2 lg:col-span-1">
-        <Figure featured label="الاستفادات المسجلة" value={summary.total} accent="#ef5a27" icon={Users} />
+        <Figure
+          featured
+          label="الاستفادات المسجلة"
+          value={summary.total}
+          caption={summary.gender_unreported ? `منها ${formatNumber(summary.gender_unreported)} لم يُذكر جنسها في المصدر` : undefined}
+          accent="var(--t-primary)"
+          icon={Users}
+        />
       </div>
       <Figure
         label="الذكور"
         value={summary.male}
         caption={`${formatPercent(summary.male_share)} من الإجمالي`}
-        accent="#1f6fd1"
+        accent="#2193c7"
         icon={Mars}
       />
       <Figure
         label="الإناث"
         value={summary.female}
         caption={`${formatPercent(summary.female_share)} من الإجمالي`}
-        accent="#e2571f"
+        accent="#8f4bc9"
         icon={Venus}
       />
       <div className="col-span-2 lg:col-span-1">
-        <Figure label="المكاتب" value={summary.offices_count} caption="مكاتب لديها سجلات" accent="#c98500" icon={Building2} />
+        <Figure label="المكاتب" value={summary.offices_count} caption="مكاتب لديها سجلات" accent="var(--t-dark)" icon={Building2} />
       </div>
     </div>
   )

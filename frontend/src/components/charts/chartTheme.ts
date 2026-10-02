@@ -1,7 +1,10 @@
 // One visual language for every chart: fonts, ink, grid, tooltip and the validated palette.
 export const chartColors = {
-  male: '#1f6fd1',
-  female: '#e2571f',
+  // Cyan-blue / violet: validated as a pair (CVD separation, contrast) and kept at least
+  // ΔE 15 away from every track colour, so gender never reads as a track.
+  male: '#2193c7',
+  female: '#8f4bc9',
+  unreported: '#a3a8b0',
   // Neutral warm slate for totals, so orange stays reserved for the female series and the brand.
   total: '#4a505a',
   ink: '#1d2025',
@@ -11,19 +14,9 @@ export const chartColors = {
   axis: '#dcd1c2',
   surface: '#ffffff',
   // Label ink chosen per fill for >= 4.5:1 contrast.
-  onMale: '#ffffff',
-  onFemale: '#0d0e10',
+  onMale: '#0d0e10',
+  onFemale: '#ffffff',
 } as const
-
-/**
- * Categorical slots for sectors, validated in this order (CVD separation, chroma, lightness).
- * A sector takes the slot of its position in the institution's list, never a cycled colour.
- */
-export const sectorPalette = ['#2a78d6', '#e2571f', '#16a06f', '#c98500', '#d55181'] as const
-
-export function sectorColor(index: number): string {
-  return sectorPalette[index] ?? chartColors.inkMuted
-}
 
 export const chartFont = {
   family: "'Cairo Variable', 'Cairo', system-ui, sans-serif",

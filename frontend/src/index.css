@@ -28,8 +28,8 @@
   --color-gold: #f2b705;
   --color-gold-soft: #fdf3d3;
 
-  --color-male: #1f6fd1;
-  --color-female: #e2571f;
+  --color-male: #2193c7;
+  --color-female: #8f4bc9;
   --color-total: #4a505a;
 
   --color-danger: #b42318;
@@ -58,6 +58,14 @@
     }
     to {
       opacity: 1;
+    }
+  }
+  @keyframes emoji-float {
+    from {
+      transform: translate3d(0, 0, 0) rotate(-4deg);
+    }
+    to {
+      transform: translate3d(0, -18px, 0) rotate(5deg);
     }
   }
   @keyframes shimmer {
@@ -123,6 +131,26 @@
     background: linear-gradient(90deg, var(--color-brand) 0%, var(--color-brand-bright) 55%, var(--color-gold) 100%);
   }
 
+  /* Humanitarian symbols behind the content: very low opacity, slow transform-only float. */
+  .emoji-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .emoji-float {
+    position: absolute;
+    opacity: 0.07;
+    line-height: 1;
+    will-change: transform;
+    animation: emoji-float ease-in-out infinite alternate;
+    animation-play-state: paused;
+  }
+  .emoji-backdrop[data-running='true'] .emoji-float {
+    animation-play-state: running;
+  }
+
   .scrollbar-none {
     scrollbar-width: none;
   }
@@ -131,8 +159,11 @@
   }
 }
 
-/* Reduced motion: no entrance, tweens or animated transitions. */
+/* Reduced motion: no entrance, tweens, floating symbols or animated transitions. */
 @media (prefers-reduced-motion: reduce) {
+  .emoji-float {
+    animation: none !important;
+  }
   *,
   *::before,
   *::after {

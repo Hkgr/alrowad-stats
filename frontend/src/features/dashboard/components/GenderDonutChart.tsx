@@ -5,9 +5,14 @@ import { EChart } from '../../../components/charts/EChart'
 import { formatNumber, formatPercent } from '../../../lib/format'
 import type { Summary } from '../../../types/api'
 
-/** Male / female split of the filtered scope, with the exact counts and shares in the legend. */
+/**
+ * Male / female split of the filtered scope, with the exact counts and shares in the legend.
+ * The part whose gender the source does not report is its own grey slice, never split by guess.
+ */
 export function GenderDonutChart({ summary }: { summary: Summary }) {
   const { male, female, total, male_share, female_share } = summary
+  const unreported = summary.gender_unreported ?? 0
+  const unreportedShare = total ? Math.round((unreported / total) * 1000) / 10 : null
 
   const option = useMemo(
     () => ({
@@ -44,11 +49,12 @@ export function GenderDonutChart({ summary }: { summary: Summary }) {
           data: [
             { name: 'ذكور', value: male ?? 0, itemStyle: { color: chartColors.male } },
             { name: 'إناث', value: female ?? 0, itemStyle: { color: chartColors.female } },
+            ...(unreported > 0 ? [{ name: 'الجنس غير مذكور', value: unreported, itemStyle: { color: chartColors.unreported } }] : []),
           ],
         },
       ],
     }),
-    [male, female, total],
+    [male, female, total, unreported],
   )
 
   return (
@@ -63,6 +69,9 @@ export function GenderDonutChart({ summary }: { summary: Summary }) {
         items={[
           { key: 'male', label: 'ذكور', color: chartColors.male, detail: `${formatNumber(male)} · ${formatPercent(male_share)}` },
           { key: 'female', label: 'إناث', color: chartColors.female, detail: `${formatNumber(female)} · ${formatPercent(female_share)}` },
+          ...(unreported > 0
+            ? [{ key: 'unreported', label: 'الجنس غير مذكور', color: chartColors.unreported, detail: `${formatNumber(unreported)} · ${formatPercent(unreportedShare)}` }]
+            : []),
         ]}
       />
     </div>
