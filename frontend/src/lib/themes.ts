@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import type { Dashboard } from '../types/api'
 
 /**
  * One theme per track, keyed by the track code from the institution's project list. Colours come
@@ -42,6 +43,13 @@ export const UNCLASSIFIED_THEME: Theme = {
 export function themeFor(code: string | null | undefined, unclassified = false): Theme {
   if (unclassified) return UNCLASSIFIED_THEME
   return (code && THEMES[code]) || INSTITUTION_THEME
+}
+
+/** Theme of a dashboard scope: the active track's, the unclassified one, or the institution's. */
+export function scopeTheme(data: Pick<Dashboard, 'active_sector'> | undefined): Theme {
+  const sector = data?.active_sector
+  if (!sector) return INSTITUTION_THEME
+  return themeFor(sector.code, sector.slug === 'unclassified')
 }
 
 /** CSS custom properties consumed by Tailwind arbitrary values (e.g. `bg-[var(--t-light)]`). */

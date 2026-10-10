@@ -1,7 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { ApiError } from './services/api/client'
+
+// The print report is its own chunk: it is opened in a separate tab and is not part of the dashboard's first load.
+const ReportPage = lazy(() => import('./features/report/ReportPage').then((m) => ({ default: m.ReportPage })))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +23,14 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          <Route
+            path="/report"
+            element={
+              <Suspense fallback={null}>
+                <ReportPage />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<DashboardPage />} />
         </Routes>
       </BrowserRouter>

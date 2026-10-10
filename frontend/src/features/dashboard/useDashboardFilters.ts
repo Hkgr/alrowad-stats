@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { BreakdownView, FilterKey, FilterState } from '../../types/api'
 
-const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'main_activity', 'sub_activity', 'period', 'office']
+const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'main_activity', 'sub_activity', 'period', 'office', 'year', 'gender', 'age', 'disabled']
 const VIEWS: BreakdownView[] = ['projects', 'offices', 'sectors']
 
 type Changes = Partial<FilterState> & { view?: BreakdownView | null }
@@ -24,6 +24,10 @@ export function useDashboardFilters() {
       sub_activity: params.get('sub_activity'),
       period: params.get('period'),
       office: params.get('office'),
+      year: params.get('year'),
+      gender: params.get('gender'),
+      age: params.get('age'),
+      disabled: params.get('disabled'),
     }),
     [params],
   )
@@ -75,12 +79,17 @@ export function useDashboardFilters() {
 
   /** Back to the institution overview with no filters (the institution itself is kept). */
   const reset = useCallback(
-    () => update({ sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null, view: null }),
+    () =>
+      update({
+        sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null,
+        year: null, gender: null, age: null, disabled: null, view: null,
+      }),
     [update],
   )
 
   const hasActiveFilters = Boolean(
-    filters.sector || filters.project || filters.main_activity || filters.sub_activity || filters.period || filters.office,
+    filters.sector || filters.project || filters.main_activity || filters.sub_activity || filters.period || filters.office ||
+      filters.year || filters.gender || filters.age || filters.disabled,
   )
 
   return {

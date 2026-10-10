@@ -14,16 +14,20 @@ export class ApiError extends Error {
 
 type Params = Record<string, string | null | undefined>
 
-export async function apiGet<T>(path: string, params: Params = {}, signal?: AbortSignal): Promise<T> {
+/** Full URL of an endpoint; empty params are left out. Used for plain links such as file downloads. */
+export function apiUrl(path: string, params: Params = {}): string {
   const query = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
     if (value) query.set(key, value)
   }
   const qs = query.toString()
+  return `${BASE_URL}${path}${qs ? `?${qs}` : ''}`
+}
 
+export async function apiGet<T>(path: string, params: Params = {}, signal?: AbortSignal): Promise<T> {
   let response: Response
   try {
-    response = await fetch(`${BASE_URL}${path}${qs ? `?${qs}` : ''}`, {
+    response = await fetch(apiUrl(path, params), {
       headers: { Accept: 'application/json' },
       signal,
     })

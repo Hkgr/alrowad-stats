@@ -176,7 +176,23 @@
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
   body {
     background: #fff;
+    /* Keep track colours and chart fills when printing / saving as PDF. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .avoid-break {
+    break-inside: avoid;
   }
 }
