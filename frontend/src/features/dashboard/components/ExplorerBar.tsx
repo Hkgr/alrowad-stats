@@ -1,6 +1,7 @@
 import { ChevronLeft, RotateCcw, X } from 'lucide-react'
 import { SelectField, type SelectOption } from '../../../components/ui/SelectField'
 import type { Dashboard, FilterOptions, FilterState } from '../../../types/api'
+import { ShareExportBar } from './ShareExportBar'
 
 interface Props {
   filters: FilterState
@@ -13,10 +14,15 @@ interface Props {
   onSubActivity: (slug: string | null) => void
   onPeriod: (key: string | null) => void
   onOffice: (slug: string | null) => void
+  /** Year, gender, age group and special-needs filters (each change is one history entry). */
+  onFilters: (changes: Partial<FilterState>) => void
   onReset: () => void
   hasActiveFilters: boolean
   busy: boolean
 }
+
+const GENDER_LABEL: Record<string, string> = { male: 'ذكور فقط', female: 'إناث فقط' }
+const AGE_LABEL: Record<string, string> = { under_18: 'أقل من 18 سنة', adult: '18 سنة فأكثر' }
 
 /** Keeps the current value selectable even when the narrowed options no longer list it. */
 function withCurrent(list: SelectOption[], current: { value: string; label: string } | null): SelectOption[] {
@@ -35,9 +41,14 @@ export function ExplorerBar(props: Props) {
   const sub = dashboard?.filters.sub_activity ?? null
   const period = dashboard?.filters.period ?? null
   const office = dashboard?.filters.office ?? null
+  const { gender, age, disabled } = filters
 
   const periodOptions = withCurrent((options?.periods ?? []).map((p) => ({ value: p.key, label: p.label })), period && { value: period.key, label: period.label })
   const officeOptions = withCurrent((options?.offices ?? []).map((o) => ({ value: o.slug, label: o.name })), office && { value: office.slug, label: office.name })
+  const yearOptions = withCurrent(
+    (options?.years ?? []).map((y) => ({ value: String(y), label: String(y) })),
+    filters.year ? { value: filters.year, label: filters.year } : null,
+  )
   const mainOptions = withCurrent(
     (options?.main_activities ?? []).map((a) => ({ value: a.slug, label: a.has_data ? a.name : `${a.name} (لا بيانات)` })),
     main && { value: main.slug, label: main.name },
@@ -64,9 +75,14 @@ export function ExplorerBar(props: Props) {
   if (sub) chips.push({ key: 'sub', label: `نشاط فرعي: ${sub.name}`, onRemove: () => props.onSubActivity(null) })
   if (period) chips.push({ key: 'period', label: period.label, onRemove: () => props.onPeriod(null) })
   if (office) chips.push({ key: 'office', label: `مكتب ${office.name}`, onRemove: () => props.onOffice(null) })
+  if (filters.year) chips.push({ key: 'year', label: `سنة ${filters.year}`, onRemove: () => props.onFilters({ year: null }) })
+  if (gender) chips.push({ key: 'gender', label: GENDER_LABEL[gender] ?? gender, onRemove: () => props.onFilters({ gender: null }) })
+  if (age) chips.push({ key: 'age', label: AGE_LABEL[age] ?? age, onRemove: () => props.onFilters({ age: null }) })
+  if (disabled) chips.push({ key: 'disabled', label: 'ذوو الاحتياجات الخاصة', onRemove: () => props.onFilters({ disabled: null }) })
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <nav aria-label="مسار التصفح" className="min-w-0">
         <ol className="flex flex-wrap items-center gap-0.5">
           {trail.map((item, index) => {
@@ -88,6 +104,8 @@ export function ExplorerBar(props: Props) {
           })}
         </ol>
       </nav>
+      <ShareExportBar filters={filters} />
+      </div>
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4" role="group" aria-label="الفلاتر">
         <SelectField label="الفترة" value={filters.period ?? ''} options={periodOptions} allLabel="كل الفترات" onChange={(v) => props.onPeriod(v || null)} />
@@ -107,6 +125,41 @@ export function ExplorerBar(props: Props) {
           allLabel={main ? (subOptions.length ? 'كل الأنشطة الفرعية' : 'لا تتوفر في المصدر') : 'بعد اختيار نشاط رئيسي'}
           disabled={!main || subOptions.length === 0}
           onChange={(v) => props.onSubActivity(v || null)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4" role="group" aria-label="فلاتر الفئة">
+        {/* A period outside the chosen year can no longer be selected, so it is dropped with the change. */}
+        <SelectField
+          label="السنة"
+          value={filters.year ?? ''}
+          options={yearOptions}
+          allLabel="كل السنوات"
+          onChange={(v) => props.onFilters({ year: v || null, ...(v && filters.period && !filters.period.startsWith(v) ? { period: null } : {}) })}
+        />
+        <SelectField
+          label="الجنس"
+          value={gender ?? ''}
+          options={Object.entries(GENDER_LABEL).map(([value, label]) => ({ value, label }))}
+          allLabel="الكل"
+          disabled={Boolean(disabled)}
+          onChange={(v) => props.onFilters({ gender: v || null })}
+        />
+        <SelectField
+          label="العمر"
+          value={age ?? ''}
+          options={Object.entries(AGE_LABEL).map(([value, label]) => ({ value, label }))}
+          allLabel="كل الأعمار"
+          disabled={Boolean(disabled)}
+          onChange={(v) => props.onFilters({ age: v || null })}
+        />
+        <SelectField
+          label="ذوو الاحتياجات"
+          value={disabled ?? ''}
+          options={[{ value: '1', label: 'المسجَّلون فقط' }]}
+          allLabel="الكل"
+          disabled={Boolean(gender || age)}
+          onChange={(v) => props.onFilters({ disabled: v || null })}
         />
       </div>
 

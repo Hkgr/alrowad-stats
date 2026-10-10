@@ -52,6 +52,15 @@ class InstitutionFiltersRequest extends FormRequest
             'sub_activity' => ['bail', 'nullable', 'string', 'max:120'],
             'project' => ['bail', 'nullable', 'string', 'max:96', Rule::exists('projects', 'slug')->where('institution_id', $institutionId)],
             'office' => ['bail', 'nullable', 'string', 'max:96', Rule::exists('offices', 'slug')->where('institution_id', $institutionId)],
+            'year' => ['bail', 'nullable', 'integer', function (string $attribute, mixed $value, Closure $fail) use ($institutionId) {
+                if (! Period::where('institution_id', $institutionId)->where('year', (int) $value)->exists()) {
+                    $fail('السنة المحددة غير موجودة لهذه المؤسسة.');
+                }
+            }],
+            'gender' => ['bail', 'nullable', Rule::in(['male', 'female'])],
+            'format' => ['bail', 'nullable', Rule::in(['xlsx', 'csv'])],
+            'age' => ['bail', 'nullable', Rule::in(['under_18', 'adult'])],
+            'disabled' => ['bail', 'nullable', Rule::in(['1', 'true'])],
             'period' => [
                 'bail', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/',
                 function (string $attribute, mixed $value, Closure $fail) use ($institutionId) {
@@ -73,6 +82,16 @@ class InstitutionFiltersRequest extends FormRequest
                     return;
                 }
                 $input = fn (string $key) => ($v = $this->query($key)) === null || $v === '' ? null : (string) $v;
+                if ($input('disabled') !== null && ($input('gender') !== null || $input('age') !== null)) {
+                    $validator->errors()->add('disabled', 'ذوو الاحتياجات الخاصة لا يُقسَّمون حسب الجنس أو العمر في المصدر؛ لا يمكن الجمع بين هذه الفلاتر.');
+
+                    return;
+                }
+                if ($input('year') !== null && $input('period') !== null && (int) $input('year') !== (int) substr($input('period'), 0, 4)) {
+                    $validator->errors()->add('year', 'الفترة المحددة ليست ضمن هذه السنة.');
+
+                    return;
+                }
                 if ($input('main_activity') !== null && $input('project') === null) {
                     $validator->errors()->add('main_activity', 'حدّد المشروع قبل النشاط الرئيسي.');
 
@@ -117,6 +136,11 @@ class InstitutionFiltersRequest extends FormRequest
             'sector.exists' => 'المسار المحدد لا ينتمي إلى هذه المؤسسة.',
             'project.exists' => 'المشروع المحدد لا ينتمي إلى هذه المؤسسة.',
             'office.exists' => 'المكتب المحدد لا ينتمي إلى هذه المؤسسة.',
+            'year.integer' => 'السنة يجب أن تكون رقمًا مثل 2026.',
+            'format.in' => 'صيغة التصدير يجب أن تكون xlsx أو csv.',
+            'gender.in' => 'الجنس يجب أن يكون male أو female.',
+            'age.in' => 'الفئة العمرية يجب أن تكون under_18 أو adult.',
+            'disabled.in' => 'قيمة فلتر ذوي الاحتياجات الخاصة يجب أن تكون 1.',
             'period.regex' => 'صيغة الفترة يجب أن تكون YYYY-MM مثل 2026-05.',
         ];
     }
@@ -141,6 +165,7 @@ class InstitutionFiltersRequest extends FormRequest
             : $model::where('institution_id', $institution->id)->where('slug', $slug)->first();
 
         $sectorSlug = $input('sector');
+        $year = $input('year') === null ? null : (int) $input('year');
         $project = $scoped(Project::class, $input('project'));
         // Main activity slugs are unique inside their project, sub activity slugs inside their main.
         $main = $project && $input('main_activity') !== null
@@ -154,10 +179,14 @@ class InstitutionFiltersRequest extends FormRequest
             project: $project,
             period: $period,
             office: $scoped(Office::class, $input('office')),
-            classificationYear: $period?->year ?? BeneficiaryDashboardService::latestClassificationYear($institution->id),
+            classificationYear: $period?->year ?? $year ?? BeneficiaryDashboardService::latestClassificationYear($institution->id),
             unclassified: $sectorSlug === DashboardFilters::UNCLASSIFIED,
             mainActivity: $main,
             subActivity: $sub,
+            year: $year,
+            gender: $input('gender'),
+            age: $input('age'),
+            disabled: $input('disabled') !== null,
         );
     }
 

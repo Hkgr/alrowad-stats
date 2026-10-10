@@ -29,13 +29,59 @@ use Illuminate\Support\Collection;
  */
 class BeneficiaryDashboardService
 {
-    private const AGGREGATES = 'SUM(activity_records.total_count) AS total, '
-        .'SUM(COALESCE(activity_records.male_count, 0)) AS male, SUM(COALESCE(activity_records.female_count, 0)) AS female, '
-        .'COUNT(DISTINCT activity_records.project_id) AS projects, COUNT(DISTINCT activity_records.office_id) AS offices, '
-        .'COUNT(*) AS records, SUM(activity_records.disabled_count) AS disabled';
+    /** @var array{total: string, male: string, female: string, required: list<string>}|null SQL of the current build's demographic slice */
+    private ?array $slice = null;
+
+    /**
+     * SQL of the figures for the demographic filters (gender, age group, special needs).
+     *
+     * No filter: the record's own total and gender counts. With a filter the figure is the sum of
+     * the matching cells only, and a record counts only when the source reports at least one of
+     * them — a blank cell is "not reported", never zero. Special needs are a part of the total that
+     * the source does not split by gender, so there the gender figures stay empty.
+     *
+     * @return array{total: string, male: string, female: string, required: list<string>}
+     */
+    public function sliceFor(DashboardFilters $f): array
+    {
+        $cell = fn (string $column) => "COALESCE(activity_records.{$column}, 0)";
+
+        if ($f->disabled) {
+            return ['total' => 'activity_records.disabled_count', 'male' => '0', 'female' => '0', 'required' => ['disabled_count']];
+        }
+
+        $suffix = match ($f->age) {
+            'under_18' => '_under_18',
+            'adult' => '_adult',
+            default => '_count',
+        };
+        $male = $f->gender === 'female' ? [] : ['male'.$suffix];
+        $female = $f->gender === 'male' ? [] : ['female'.$suffix];
+
+        if (! $f->demographic()) {
+            return ['total' => 'activity_records.total_count', 'male' => $cell('male_count'), 'female' => $cell('female_count'), 'required' => []];
+        }
+
+        $sum = fn (array $columns) => $columns === [] ? '0' : implode(' + ', array_map($cell, $columns));
+
+        return ['total' => $sum([...$male, ...$female]), 'male' => $sum($male), 'female' => $sum($female), 'required' => [...$male, ...$female]];
+    }
+
+    private function aggregates(): string
+    {
+        $slice = $this->slice ?? [
+            'total' => 'activity_records.total_count', 'male' => 'COALESCE(activity_records.male_count, 0)',
+            'female' => 'COALESCE(activity_records.female_count, 0)', 'required' => [],
+        ];
+
+        return "SUM({$slice['total']}) AS total, SUM({$slice['male']}) AS male, SUM({$slice['female']}) AS female, "
+            .'COUNT(DISTINCT activity_records.project_id) AS projects, COUNT(DISTINCT activity_records.office_id) AS offices, '
+            .'COUNT(*) AS records, SUM(activity_records.disabled_count) AS disabled';
+    }
 
     public function build(DashboardFilters $f): DashboardData
     {
+        $this->slice = $this->sliceFor($f);
         $measure = $this->measure();
         $year = $f->classificationYear;
         $activeSector = $f->sector ?? ($f->project && $year && ! $f->unclassified ? $f->project->sectorIn($year) : null);
@@ -69,7 +115,42 @@ class BeneficiaryDashboardService
             categories: $f->project && ! $f->mainActivity ? $this->categories($f, $measure) : [],
             otherMeasures: $this->otherMeasures($f),
             sources: $this->sources($f, $measure),
+            ages: $this->ages($f, $measure),
         );
+    }
+
+    /**
+     * Under-18 / adult split from the age cells the source actually filled. The remainder of the
+     * total is "not reported" — never guessed and never shared out proportionally.
+     *
+     * @return array{under_18: int, adult: int, reported: int, records_with_age: int}|null null when no record reports an age
+     */
+    private function ages(DashboardFilters $f, Measure $measure): ?array
+    {
+        // Under an age or special-needs filter the whole scope is already that one slice.
+        if ($f->age !== null || $f->disabled) {
+            return null;
+        }
+
+        $genders = $f->gender === null ? ['male', 'female'] : [$f->gender];
+        $sum = fn (string $group) => implode(' + ', array_map(fn (string $g) => "COALESCE(activity_records.{$g}_{$group}, 0)", $genders));
+        $reported = implode(' OR ', array_map(fn (string $g) => "activity_records.{$g}_under_18 IS NOT NULL OR activity_records.{$g}_adult IS NOT NULL", $genders));
+
+        $row = $this->records($f, $measure)
+            ->selectRaw('SUM('.$sum('under_18').') AS under_18, SUM('.$sum('adult').') AS adult, '
+                ."SUM(CASE WHEN {$reported} THEN 1 ELSE 0 END) AS with_age")
+            ->toBase()->first();
+
+        if ($row === null || (int) $row->with_age === 0) {
+            return null;
+        }
+
+        return [
+            'under_18' => (int) $row->under_18,
+            'adult' => (int) $row->adult,
+            'reported' => (int) $row->under_18 + (int) $row->adult,
+            'records_with_age' => (int) $row->with_age,
+        ];
     }
 
     public function measure(string $code = Measure::REGISTERED_BENEFITS): Measure
@@ -107,6 +188,11 @@ class BeneficiaryDashboardService
             ->where('activity_records.institution_id', $f->institution->id)
             ->where('activity_records.measure_id', $measure->id)
             ->where('activity_records.is_active', true)
+            ->when($f->year, fn (Builder $q) => $q->where('periods.year', $f->year))
+            ->when($f->demographic(), function (Builder $q) use ($f) {
+                $required = array_map(fn (string $column) => "activity_records.{$column} IS NOT NULL", $this->sliceFor($f)['required']);
+                $q->whereRaw('('.implode(' OR ', $required).')');
+            })
             ->when($period && $f->period, fn (Builder $q) => $q->where('activity_records.period_id', $f->period->id))
             ->when(! $f->project && $f->sector, fn (Builder $q) => $q->where('psa.sector_id', $f->sector->id))
             ->when(! $f->project && $f->unclassified, fn (Builder $q) => $q->whereNull('psa.sector_id'))
@@ -119,7 +205,7 @@ class BeneficiaryDashboardService
     /** Totals of a query, or null when it matches no record (absence is not zero). */
     private function figures(Builder $query): ?Figures
     {
-        $row = $query->selectRaw(self::AGGREGATES)->toBase()->first();
+        $row = $query->selectRaw($this->aggregates())->toBase()->first();
 
         return $row === null || (int) $row->records === 0 ? null : Figures::fromRow($row);
     }
@@ -128,7 +214,7 @@ class BeneficiaryDashboardService
     private function grouped(Builder $query, string $column): Collection
     {
         return $query->groupBy($column)
-            ->selectRaw("{$column} AS group_key, ".self::AGGREGATES)
+            ->selectRaw("{$column} AS group_key, ".$this->aggregates())
             ->toBase()->get()
             ->mapWithKeys(fn ($row) => [(string) $row->group_key => Figures::fromRow($row)]);
     }
@@ -142,8 +228,8 @@ class BeneficiaryDashboardService
                     ->on('offices.institution_id', '=', 'activity_records.institution_id');
             })
             ->groupBy('offices.id', 'offices.slug', 'offices.name')
-            ->selectRaw('offices.slug, offices.name, SUM(activity_records.total_count) AS total, '
-                .'SUM(COALESCE(activity_records.male_count, 0)) AS male, SUM(COALESCE(activity_records.female_count, 0)) AS female')
+            ->selectRaw("offices.slug, offices.name, SUM({$this->slice['total']}) AS total, "
+                ."SUM({$this->slice['male']}) AS male, SUM({$this->slice['female']}) AS female")
             ->toBase()->get()
             ->map(fn ($row) => new OfficeFigures($row->slug, $row->name, (int) $row->total, (int) $row->male, (int) $row->female))
             ->sort(fn (OfficeFigures $a, OfficeFigures $b) => [$b->total, $a->name] <=> [$a->total, $b->name])
@@ -174,7 +260,10 @@ class BeneficiaryDashboardService
      */
     private function projectSummaries(DashboardFilters $f, Measure $measure, ?int $year, ?Sector $activeSector): array
     {
-        $scope = new DashboardFilters($f->institution, $activeSector, null, $f->period, $f->office, $year, $f->unclassified && ! $activeSector);
+        $scope = new DashboardFilters(
+            $f->institution, $activeSector, null, $f->period, $f->office, $year, $f->unclassified && ! $activeSector,
+            year: $f->year, gender: $f->gender, age: $f->age, disabled: $f->disabled,
+        );
         $figures = $this->grouped($this->records($scope, $measure), 'activity_records.project_id');
 
         $assignments = $year === null ? collect() : ProjectSectorAssignment::with('sector')
@@ -244,6 +333,11 @@ class BeneficiaryDashboardService
     /** Other measures in the same scope (e.g. families served). Never added to registered benefits. */
     private function otherMeasures(DashboardFilters $f): array
     {
+        // Families and sacrifices are not split by gender, age or special needs.
+        if ($f->demographic()) {
+            return [];
+        }
+
         $out = [];
         foreach (Measure::where('code', '!=', Measure::REGISTERED_BENEFITS)->orderBy('id')->get() as $measure) {
             $row = $this->records($f, $measure)

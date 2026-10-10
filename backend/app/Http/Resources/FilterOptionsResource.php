@@ -20,6 +20,7 @@ class FilterOptionsResource extends JsonResource
         return [
             'institution' => new InstitutionResource($this->filters->institution),
             'classification_year' => $this->options['classification_year'],
+            'years' => $this->options['years'],
             'sectors' => $this->options['sectors']->map(fn ($row) => [
                 'slug' => $row['sector']->slug,
                 'code' => $row['sector']->code,

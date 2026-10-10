@@ -36,7 +36,13 @@ class DashboardResource extends JsonResource
                 'sub_activity' => $f->subActivity ? ['slug' => $f->subActivity->slug, 'name' => $f->subActivity->name] : null,
                 'period' => $f->period ? ['key' => $f->period->key(), 'label' => $f->period->label()] : null,
                 'office' => $f->office ? ['slug' => $f->office->slug, 'name' => $f->office->name] : null,
+                'year' => $f->year,
+                'gender' => $f->gender,
+                'age' => $f->age,
+                'disabled' => $f->disabled,
             ],
+            // Set when the figures are a gender / age / special-needs slice of the registered benefits.
+            'demographic' => $f->demographic(),
             'active_sector' => $f->unclassified && ! $data->activeSector ? $this->unclassifiedRef() : $this->sector($data->activeSector),
             'measure' => new MeasureResource($data->measure),
             'has_data' => $data->hasData(),
@@ -117,12 +123,70 @@ class DashboardResource extends JsonResource
                 'items_label' => $row['measure']->items_label,
                 'items' => $row['items'],
             ], $data->otherMeasures),
+            'insights' => $this->insights($data),
             // Traceability only; the UI does not display it.
             'sources' => $data->sources->map(fn (DataSource $s) => [
                 'label' => $s->label,
                 'file_name' => $s->file_name,
                 'coverage' => $s->coverage,
             ])->values(),
+        ];
+    }
+
+    /**
+     * Analytical readings derived from the same filtered numbers. Anything the source does not
+     * report stays null / "not reported" — shares are always of the full total, never rescaled.
+     *
+     * @return array<string, mixed>
+     */
+    private function insights(DashboardData $data): array
+    {
+        $total = $data->totals?->total;
+
+        $ages = null;
+        if ($data->ages !== null && $total) {
+            $unreported = max(0, $total - $data->ages['reported']);
+            $ages = [
+                'under_18' => $data->ages['under_18'],
+                'adult' => $data->ages['adult'],
+                'unreported' => $unreported,
+                'under_18_share' => $this->share($data->ages['under_18'], $total),
+                'adult_share' => $this->share($data->ages['adult'], $total),
+                'unreported_share' => $this->share($unreported, $total),
+                // Share of the total whose age is reported: tells the reader how far to trust the split.
+                'coverage' => $this->share($data->ages['reported'], $total),
+            ];
+        }
+
+        // Months of the scope with figures (period filter ignored, so the selection stays comparable).
+        $months = array_values(array_filter($data->periods, fn ($row) => $row['figures']->total > 0));
+        $monthsTotal = array_sum(array_map(fn ($row) => $row['figures']->total, $months));
+        $peak = null;
+        foreach ($months as $row) {
+            if ($peak === null || $row['figures']->total > $peak['figures']->total) {
+                $peak = $row;
+            }
+        }
+
+        $officesTotal = array_sum(array_map(fn (OfficeFigures $o) => $o->total, $data->comparison));
+        $topOffice = $data->comparison[0] ?? null;
+
+        return [
+            'ages' => $ages,
+            // Special needs are not split by gender or age in the source, so the share only exists unfiltered.
+            'disabled' => ! $data->filters->demographic() && $total && $data->totals?->disabled !== null ? [
+                'count' => $data->totals->disabled,
+                'share' => $this->share($data->totals->disabled, $total),
+            ] : null,
+            'months_with_data' => count($months),
+            'monthly_average' => $months !== [] ? (int) round($monthsTotal / count($months)) : null,
+            'peak_month' => $peak ? ['label' => $peak['period']->label(), 'key' => $peak['period']->key(), 'total' => $peak['figures']->total] : null,
+            'top_office' => $topOffice && $officesTotal > 0 ? [
+                'name' => $topOffice->name,
+                'slug' => $topOffice->slug,
+                'total' => $topOffice->total,
+                'share' => $this->share($topOffice->total, $officesTotal),
+            ] : null,
         ];
     }
 

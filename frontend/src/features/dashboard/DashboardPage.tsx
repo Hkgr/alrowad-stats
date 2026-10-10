@@ -9,12 +9,15 @@ import { useFullscreen } from '../../hooks/useFullscreen'
 import { introProps, useIntro } from '../../hooks/useIntro'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { formatNumber } from '../../lib/format'
-import { INSTITUTION_THEME, themeFor, themeStyle, type Theme } from '../../lib/themes'
+import { scopeTheme, themeFor, themeStyle, type Theme } from '../../lib/themes'
 import { SiteHeader } from '../../layout/SiteHeader'
-import type { BreakdownView, Dashboard } from '../../types/api'
+import type { BreakdownView, Dashboard, FilterState } from '../../types/api'
 import { ActivitiesPanel } from './components/ActivitiesPanel'
+import { AnalyticsSection } from './components/AnalyticsSection'
+import { DataQualityCard } from './components/DataQualityCard'
 import { ExplorerBar } from './components/ExplorerBar'
 import { FiguresBand, FiguresBandSkeleton } from './components/FiguresBand'
+import { InsightsPanel } from './components/InsightsPanel'
 import { OfficesTable } from './components/OfficesTable'
 import { OtherMeasures } from './components/OtherMeasures'
 import { ProjectSearch } from './components/ProjectSearch'
@@ -32,13 +35,6 @@ const ComparisonBarChart = lazy(() => import('./components/ComparisonBarChart').
 const PeriodsChart = lazy(() => import('./components/PeriodsChart').then((m) => ({ default: m.PeriodsChart })))
 
 const chartFallback = (height = 'h-80') => <Skeleton className={`w-full ${height}`} />
-
-/** Theme of the current scope: the active track's, the unclassified one, or the institution's. */
-function scopeTheme(data: Dashboard | undefined): Theme {
-  const sector = data?.active_sector
-  if (!sector) return INSTITUTION_THEME
-  return themeFor(sector.code, sector.slug === 'unclassified')
-}
 
 export function DashboardPage() {
   const nav = useDashboardFilters()
@@ -90,7 +86,7 @@ export function DashboardPage() {
   }, [level, reducedMotion])
 
   const resetAll = useCallback(
-    () => update({ institution: null, sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null, view: null }),
+    () => update({ institution: null, sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null, year: null, gender: null, age: null, disabled: null, view: null }),
     [update],
   )
 
@@ -138,11 +134,18 @@ export function DashboardPage() {
               onSubActivity={nav.goSubActivity}
               onPeriod={nav.setPeriod}
               onOffice={nav.toggleOffice}
+              onFilters={update}
               onReset={nav.reset}
               hasActiveFilters={hasActiveFilters}
               busy={refreshing}
             />
           </div>
+
+          {data?.demographic && (
+            <p role="note" className="rounded-xl border border-line bg-white px-4 py-2 text-sm text-ink-soft">
+              الأرقام المعروضة هي الفئة المحددة فقط. السجلات التي لا يذكر مصدرها هذه الفئة لا تدخل في الحساب، وقد يكون المجموع أقل من إجمالي المشروع.
+            </p>
+          )}
 
           {failure ? (
             <Card>
@@ -179,7 +182,7 @@ export function DashboardPage() {
 
               {/* A short fade marks a change of level; the first-load entrance is not replayed. */}
               <div key={data.level} className={intro ? '' : 'animate-fade'}>
-                <LevelContent data={data} intro={intro} view={urlView ?? 'projects'} nav={nav} theme={theme} />
+                <LevelContent data={data} filters={filters} intro={intro} view={urlView ?? 'projects'} nav={nav} theme={theme} />
               </div>
             </div>
           )}
@@ -191,6 +194,7 @@ export function DashboardPage() {
 
 interface LevelProps {
   data: Dashboard
+  filters: FilterState
   intro: boolean
   view: BreakdownView
   nav: ReturnType<typeof useDashboardFilters>
@@ -198,7 +202,7 @@ interface LevelProps {
 }
 
 /** Heading, figures, activities, charts and breakdown for the current level. */
-function LevelContent({ data, intro, view, nav, theme }: LevelProps) {
+function LevelContent({ data, filters, intro, view, nav, theme }: LevelProps) {
   const { level, activities } = data
   const sector = data.active_sector
   const inProject = level === 'project' || level === 'main_activity' || level === 'sub_activity'
@@ -291,6 +295,8 @@ function LevelContent({ data, intro, view, nav, theme }: LevelProps) {
         </Card>
       )}
 
+      {data.has_data && <InsightsPanel insights={data.insights} />}
+
       {periodsWithData.length >= 2 && (
         <Card id="periods" title="الاستفادات حسب الشهر" hint="اضغط على شهر لتصفيته">
           <Suspense fallback={chartFallback('h-72')}>
@@ -323,6 +329,16 @@ function LevelContent({ data, intro, view, nav, theme }: LevelProps) {
         </Card>
       )}
 
+      {data.has_data && (
+        <AnalyticsSection
+          filters={filters}
+          dashboard={data}
+          onOpenProject={(slug) => nav.goProject(slug, data.projects.find((p) => p.slug === slug)?.sector?.slug ?? sectorSlug)}
+          onSelectOffice={nav.toggleOffice}
+          onSelectPeriod={nav.setPeriod}
+        />
+      )}
+
       <Card
         id="breakdown"
         title={inProject ? 'التفاصيل حسب المكتب' : undefined}
@@ -349,6 +365,8 @@ function LevelContent({ data, intro, view, nav, theme }: LevelProps) {
           </TabPanel>
         )}
       </Card>
+
+      {level === 'overview' && <DataQualityCard institution={data.institution.slug} />}
     </div>
   )
 }

@@ -277,6 +277,156 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.sectors.0.offices_count', 7);
     }
 
+    public function test_insights_without_age_data_report_no_ages(): void
+    {
+        $this->getJson(self::BASE)
+            ->assertOk()
+            ->assertJsonPath('data.insights.ages', null)
+            ->assertJsonPath('data.insights.top_office.share', 17.2)
+            ->assertJsonPath('data.insights.months_with_data', 1)
+            ->assertJsonPath('data.insights.monthly_average', 1450)
+            ->assertJsonPath('data.insights.peak_month.total', 1450);
+    }
+
+    public function test_age_split_keeps_the_unreported_part_separate(): void
+    {
+        $institution = Institution::where('slug', 'rowad')->first();
+        $project = Project::create(['institution_id' => $institution->id, 'slug' => 'ages', 'name' => 'مشروع بأعمار']);
+        $measure = Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id');
+        $common = [
+            'institution_id' => $institution->id, 'project_id' => $project->id, 'measure_id' => $measure,
+            'office_id' => Office::where('slug', 'jarabulus')->value('id'), 'period_id' => Period::value('id'),
+        ];
+        // 10 + 5 under 18, 20 + 15 adults = 50 with ages; 50 more people without any age cell.
+        Records::make($common + ['male_under_18' => 10, 'female_under_18' => 5, 'male_adult' => 20, 'female_adult' => 15, 'male_count' => 30, 'female_count' => 20, 'disabled_count' => 4]);
+        Records::make($common + ['male_count' => 25, 'female_count' => 25]);
+
+        $this->getJson(self::BASE.'&project=ages')
+            ->assertOk()
+            ->assertJsonPath('data.summary.total', 100)
+            ->assertJsonPath('data.insights.ages.under_18', 15)
+            ->assertJsonPath('data.insights.ages.adult', 35)
+            ->assertJsonPath('data.insights.ages.unreported', 50)
+            ->assertJsonPath('data.insights.ages.under_18_share', 15)
+            ->assertJsonPath('data.insights.ages.adult_share', 35)
+            ->assertJsonPath('data.insights.ages.unreported_share', 50)
+            ->assertJsonPath('data.insights.ages.coverage', 50)
+            ->assertJsonPath('data.insights.disabled.count', 4)
+            ->assertJsonPath('data.insights.disabled.share', 4);
+    }
+
+    /** A project of the seeded institution with two records of a 2025 month, plus one of the seeded 2026 month. */
+    private function demographicProject(): void
+    {
+        $institution = Institution::where('slug', 'rowad')->first();
+        $project = Project::create(['institution_id' => $institution->id, 'slug' => 'demo', 'name' => 'مشروع ديموغرافي']);
+        $measure = Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id');
+        $p2025 = Period::create(['institution_id' => $institution->id, 'year' => 2025, 'month' => 10]);
+        $common = ['institution_id' => $institution->id, 'project_id' => $project->id, 'measure_id' => $measure, 'office_id' => Office::where('slug', 'jarabulus')->value('id')];
+
+        // Full detail: male 10+20, female 5+15 (total 50), 4 with special needs.
+        Records::make($common + ['period_id' => $p2025->id, 'male_under_18' => 10, 'female_under_18' => 5, 'male_adult' => 20, 'female_adult' => 15, 'male_count' => 30, 'female_count' => 20, 'disabled_count' => 4]);
+        // Gender only (no ages, no special needs): male 7, female 3.
+        Records::make($common + ['period_id' => $p2025->id, 'male_count' => 7, 'female_count' => 3]);
+        // Total only: gender, ages and special needs not reported.
+        Records::make($common + ['period_id' => $p2025->id, 'total_count' => 40]);
+    }
+
+    public function test_year_filter_keeps_only_that_year(): void
+    {
+        $this->demographicProject();
+
+        $this->getJson(self::BASE.'&year=2025')->assertOk()
+            ->assertJsonPath('data.summary.total', 100)
+            ->assertJsonPath('data.filters.year', 2025)
+            ->assertJsonCount(1, 'data.periods');
+        $this->getJson(self::BASE.'&year=2026')->assertOk()->assertJsonPath('data.summary.total', 1450);
+        $this->getJson('/api/v1/filters?institution=rowad')->assertOk()->assertJsonPath('data.years', [2025, 2026]);
+        $this->getJson(self::BASE.'&year=1999')->assertStatus(422)->assertJsonValidationErrors('year');
+        $this->getJson(self::BASE.'&year=2025&period=2026-05')->assertStatus(422)->assertJsonValidationErrors('year');
+    }
+
+    public function test_gender_filter_counts_only_records_that_report_that_gender(): void
+    {
+        $this->demographicProject();
+
+        // 30 + 7 males; the total-only record reports no gender, so it is out, not zero.
+        $this->getJson(self::BASE.'&project=demo&gender=male')->assertOk()
+            ->assertJsonPath('data.summary.total', 37)
+            ->assertJsonPath('data.summary.male', 37)
+            ->assertJsonPath('data.summary.female', 0)
+            ->assertJsonPath('data.demographic', true);
+        $this->getJson(self::BASE.'&project=demo&gender=female')->assertOk()->assertJsonPath('data.summary.total', 23);
+        // The seeded records of the other offices keep their own male total under the same filter.
+        $this->getJson(self::BASE.'&gender=male&year=2026')->assertOk()->assertJsonPath('data.summary.total', 718);
+    }
+
+    public function test_age_filter_and_its_combination_with_gender(): void
+    {
+        $this->demographicProject();
+
+        $this->getJson(self::BASE.'&project=demo&age=under_18')->assertOk()
+            ->assertJsonPath('data.summary.total', 15)
+            ->assertJsonPath('data.summary.male', 10)
+            ->assertJsonPath('data.summary.female', 5);
+        $this->getJson(self::BASE.'&project=demo&age=adult&gender=female')->assertOk()
+            ->assertJsonPath('data.summary.total', 15)
+            ->assertJsonPath('data.summary.male', 0)
+            ->assertJsonPath('data.insights.ages', null);
+        // The seeded sample has no age cells: absence, not zero.
+        $this->getJson(self::BASE.'&age=adult&year=2026')->assertOk()->assertJsonPath('data.has_data', false)->assertJsonPath('data.summary.total', null);
+    }
+
+    public function test_gender_filter_keeps_the_age_split_of_that_gender(): void
+    {
+        $this->demographicProject();
+
+        $this->getJson(self::BASE.'&project=demo&gender=male')->assertOk()
+            ->assertJsonPath('data.insights.ages.under_18', 10)
+            ->assertJsonPath('data.insights.ages.adult', 20)
+            ->assertJsonPath('data.insights.ages.unreported', 7);
+    }
+
+    public function test_special_needs_filter_is_not_combined_with_gender_or_age(): void
+    {
+        $this->demographicProject();
+
+        $this->getJson(self::BASE.'&project=demo&disabled=1')->assertOk()
+            ->assertJsonPath('data.summary.total', 4)
+            ->assertJsonPath('data.summary.male', 0)
+            ->assertJsonPath('data.summary.gender_unreported', 4)
+            ->assertJsonPath('data.insights.disabled', null);
+        $this->getJson(self::BASE.'&disabled=1&gender=male')->assertStatus(422)->assertJsonValidationErrors('disabled');
+        $this->getJson(self::BASE.'&disabled=1&age=adult')->assertStatus(422)->assertJsonValidationErrors('disabled');
+        $this->getJson(self::BASE.'&gender=other')->assertStatus(422)->assertJsonValidationErrors('gender');
+    }
+
+    public function test_demographic_filters_apply_to_every_breakdown_and_hide_other_units(): void
+    {
+        $this->demographicProject();
+        $response = $this->getJson(self::BASE.'&gender=male&year=2025')->assertOk();
+
+        $this->assertSame(37, $response->json('data.summary.total'));
+        $this->assertSame(37, collect($response->json('data.offices'))->sum('total'));
+        $this->assertSame(37, collect($response->json('data.periods'))->sum('total'));
+        $this->assertSame([], $response->json('data.other_measures'));
+        $this->assertSame(37, collect($response->json('data.projects'))->sum('total'));
+    }
+
+    public function test_insights_are_empty_when_the_scope_has_no_data(): void
+    {
+        [, $project] = $this->classifiedProjectWithoutData();
+
+        $this->getJson(self::BASE.'&project='.$project->slug)
+            ->assertOk()
+            ->assertJsonPath('data.has_data', false)
+            ->assertJsonPath('data.insights.ages', null)
+            ->assertJsonPath('data.insights.disabled', null)
+            ->assertJsonPath('data.insights.monthly_average', null)
+            ->assertJsonPath('data.insights.peak_month', null)
+            ->assertJsonPath('data.insights.top_office', null);
+    }
+
     /** @return array{0: Sector, 1: Project} */
     private function classifiedProjectWithoutData(): array
     {

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\ExportController;
 use App\Http\Controllers\Api\V1\FilterController;
 use App\Http\Controllers\Api\V1\InstitutionController;
 use Illuminate\Support\Facades\DB;
@@ -21,4 +23,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/institutions', [InstitutionController::class, 'index']);
     Route::get('/filters', [FilterController::class, 'show']);
     Route::get('/dashboard', [DashboardController::class, 'show']);
+    Route::get('/analytics', [AnalyticsController::class, 'show']);
+    Route::get('/export', [ExportController::class, 'show']);
+    Route::get('/data-quality', [AnalyticsController::class, 'quality']);
 });

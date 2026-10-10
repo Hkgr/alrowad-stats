@@ -29,6 +29,7 @@ final readonly class DashboardData
      * @param  list<array{category: ProjectCategory, figures: ?Figures}>  $categories
      * @param  list<array{measure: Measure, total: int, items: ?int, records: int}>  $otherMeasures
      * @param  Collection<int, DataSource>  $sources
+     * @param  array{under_18: int, adult: int, reported: int, records_with_age: int}|null  $ages
      */
     public function __construct(
         public DashboardFilters $filters,
@@ -49,6 +50,7 @@ final readonly class DashboardData
         public array $categories,
         public array $otherMeasures,
         public Collection $sources,
+        public ?array $ages = null,
     ) {}
 
     public function hasData(): bool
