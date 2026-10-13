@@ -119,6 +119,11 @@ class ExportService
         return [$table, [36, 10, 10, 16, 12]];
     }
 
+    private function monthName(int $key): string
+    {
+        return Period::MONTHS_AR[$key % 100].' '.intdiv($key, 100);
+    }
+
     private function monthLabel(string $key): string
     {
         [$year, $month] = Period::parseKey($key);
@@ -186,6 +191,7 @@ class ExportService
             $f->subActivity ? 'النشاط الفرعي: '.$f->subActivity->name : null,
             $f->year ? 'السنة: '.$f->year : null,
             $f->period ? 'الفترة: '.$f->period->label() : null,
+            $f->hasRange() ? 'الأشهر: '.($f->from ? 'من '.$this->monthName($f->from) : 'من أول شهر').' '.($f->to ? 'إلى '.$this->monthName($f->to) : 'إلى آخر شهر') : null,
             $f->office ? 'المكتب: '.$f->office->name : null,
             $f->gender ? 'الجنس: '.($f->gender === 'male' ? 'ذكور فقط' : 'إناث فقط') : null,
             $f->age ? 'العمر: '.($f->age === 'under_18' ? 'أقل من 18 سنة' : '18 سنة فأكثر') : null,

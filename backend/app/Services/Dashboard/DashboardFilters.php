@@ -42,7 +42,21 @@ final readonly class DashboardFilters
         public ?string $age = null,
         /** Counts only people with special needs (never combined with gender or age: the source does not split them). */
         public bool $disabled = false,
+        /** First / last month of a range, as year * 100 + month (e.g. 202605), both inclusive and each optional. Never combined with `period`. */
+        public ?int $from = null,
+        public ?int $to = null,
     ) {}
+
+    public function hasRange(): bool
+    {
+        return $this->from !== null || $this->to !== null;
+    }
+
+    /** Year * 100 + month of a period, the unit of `from` / `to`. */
+    public static function monthKey(int $year, int $month): int
+    {
+        return $year * 100 + $month;
+    }
 
     /** True when the figures are a demographic slice of the registered benefits instead of their total. */
     public function demographic(): bool
@@ -80,6 +94,8 @@ final readonly class DashboardFilters
             gender: isset($drop['gender']) ? null : $this->gender,
             age: isset($drop['age']) ? null : $this->age,
             disabled: isset($drop['disabled']) ? false : $this->disabled,
+            from: isset($drop['from']) ? null : $this->from,
+            to: isset($drop['to']) ? null : $this->to,
         );
     }
 }

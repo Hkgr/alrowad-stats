@@ -13,6 +13,14 @@ export function formatPercent(value: number | null | undefined): string {
   return value == null ? NO_DATA : `${percent.format(value)}%`
 }
 
+/** "من X إلى Y" for a month range (either end may be open), or null when there is no range. */
+export function rangeLabel(from: string | null | undefined, to: string | null | undefined): string | null {
+  if (from && to) return `من ${from} إلى ${to}`
+  if (from) return `من ${from}`
+  if (to) return `حتى ${to}`
+  return null
+}
+
 /** Normalises Arabic text so search ignores diacritics, hamza forms and ta marbuta. */
 export function normalizeArabic(text: string): string {
   return text

@@ -189,6 +189,8 @@ class BeneficiaryDashboardService
             ->where('activity_records.measure_id', $measure->id)
             ->where('activity_records.is_active', true)
             ->when($f->year, fn (Builder $q) => $q->where('periods.year', $f->year))
+            ->when($f->from, fn (Builder $q) => $q->whereRaw('(periods.year * 100 + periods.month) >= ?', [$f->from]))
+            ->when($f->to, fn (Builder $q) => $q->whereRaw('(periods.year * 100 + periods.month) <= ?', [$f->to]))
             ->when($f->demographic(), function (Builder $q) use ($f) {
                 $required = array_map(fn (string $column) => "activity_records.{$column} IS NOT NULL", $this->sliceFor($f)['required']);
                 $q->whereRaw('('.implode(' OR ', $required).')');
@@ -262,7 +264,7 @@ class BeneficiaryDashboardService
     {
         $scope = new DashboardFilters(
             $f->institution, $activeSector, null, $f->period, $f->office, $year, $f->unclassified && ! $activeSector,
-            year: $f->year, gender: $f->gender, age: $f->age, disabled: $f->disabled,
+            year: $f->year, gender: $f->gender, age: $f->age, disabled: $f->disabled, from: $f->from, to: $f->to,
         );
         $figures = $this->grouped($this->records($scope, $measure), 'activity_records.project_id');
 
