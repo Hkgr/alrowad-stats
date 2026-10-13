@@ -8,6 +8,7 @@ use App\Models\Office;
 use App\Models\Period;
 use App\Models\Project;
 use App\Models\ProjectSectorAssignment;
+use App\Models\Region;
 use App\Models\Sector;
 use App\Models\SubActivity;
 use Illuminate\Support\Collection;
@@ -73,7 +74,21 @@ class FilterOptionsService
         $years = Period::whereIn('id', $this->dashboard->records($filters->without('office', 'year', 'from', 'to'), $measure, period: false)->distinct()->pluck('activity_records.period_id'))
             ->distinct()->orderBy('year')->pluck('year')->map(fn ($y) => (int) $y)->values();
 
+        // Regions with their offices (every office is listed; `has_data` tells whether it has records in the scope).
+        $withData = Office::where('institution_id', $institutionId)->whereIn('id', $officeIds)->pluck('id')->flip();
+        $allOffices = Office::where('institution_id', $institutionId)->orderBy('sort_order')->orderBy('name')->get();
+        $regions = Region::where('institution_id', $institutionId)->orderBy('sort_order')->orderBy('name')->get()
+            ->map(fn (Region $region) => [
+                'region' => $region,
+                'offices' => $allOffices->where('region_id', $region->id)
+                    ->sortBy(fn (Office $office) => $this->configOrder($region->slug, $office->slug))->values()
+                    ->map(fn (Office $office) => ['office' => $office, 'has_data' => $withData->has($office->id)])->all(),
+            ])->all();
+        $unassigned = $allOffices->whereNull('region_id')->values()->map(fn (Office $office) => ['office' => $office, 'has_data' => $withData->has($office->id)])->all();
+
         return [
+            'regions' => $regions,
+            'unassigned_offices' => $unassigned,
             'years' => $years,
             'sectors' => $sectors,
             'projects' => $projects,
@@ -83,6 +98,15 @@ class FilterOptionsService
             'offices' => Office::where('institution_id', $institutionId)->whereIn('id', $officeIds)->orderBy('sort_order')->orderBy('name')->get(),
             'classification_year' => $year,
         ];
+    }
+
+    /** Position of an office inside its region in config/regions.php (unlisted offices go last). */
+    private function configOrder(string $regionSlug, string $officeSlug): int
+    {
+        $listed = collect(config('regions.regions'))->firstWhere('slug', $regionSlug)['offices'] ?? [];
+        $position = array_search($officeSlug, $listed, true);
+
+        return $position === false ? PHP_INT_MAX : $position;
     }
 
     /** @return Collection<int, array{activity: MainActivity|SubActivity, has_data: bool}> */

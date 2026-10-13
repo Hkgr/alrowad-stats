@@ -38,7 +38,8 @@ class DashboardResource extends JsonResource
                 'period' => $f->period ? ['key' => $f->period->key(), 'label' => $f->period->label()] : null,
                 'from' => $this->month($f->from),
                 'to' => $this->month($f->to),
-                'office' => $f->office ? ['slug' => $f->office->slug, 'name' => $f->office->name] : null,
+                // The chosen offices (empty = all). Regions are only a way to pick several at once.
+                'offices' => array_map(fn ($o) => ['slug' => $o->slug, 'name' => $o->label()], $f->offices),
                 'year' => $f->year,
                 'gender' => $f->gender,
                 'age' => $f->age,

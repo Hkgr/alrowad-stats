@@ -69,7 +69,7 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.summary.offices_count', 1)
             ->assertJsonCount(1, 'data.offices')
             ->assertJsonPath('data.offices.0.slug', 'jarabulus')
-            ->assertJsonPath('data.filters.office.name', 'جرابلس');
+            ->assertJsonPath('data.filters.offices.0.name', 'جرابلس');
 
         // The comparison set keeps all offices so charts can highlight the selection.
         $comparison = collect($response->json('data.comparison'));

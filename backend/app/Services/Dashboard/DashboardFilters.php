@@ -30,7 +30,8 @@ final readonly class DashboardFilters
         public ?Sector $sector = null,
         public ?Project $project = null,
         public ?Period $period = null,
-        public ?Office $office = null,
+        /** @var list<Office> Chosen offices (any number); empty = every office. */
+        public array $offices = [],
         public ?int $classificationYear = null,
         public bool $unclassified = false,
         public ?MainActivity $mainActivity = null,
@@ -46,6 +47,12 @@ final readonly class DashboardFilters
         public ?int $from = null,
         public ?int $to = null,
     ) {}
+
+    /** @return list<int> */
+    public function officeIds(): array
+    {
+        return array_map(fn (Office $office) => $office->id, $this->offices);
+    }
 
     public function hasRange(): bool
     {
@@ -85,7 +92,7 @@ final readonly class DashboardFilters
             sector: isset($drop['sector']) ? null : $this->sector,
             project: isset($drop['project']) ? null : $this->project,
             period: isset($drop['period']) ? null : $this->period,
-            office: isset($drop['office']) ? null : $this->office,
+            offices: isset($drop['office']) ? [] : $this->offices,
             classificationYear: $this->classificationYear,
             unclassified: isset($drop['sector']) ? false : $this->unclassified,
             mainActivity: isset($drop['main']) || isset($drop['project']) ? null : $this->mainActivity,

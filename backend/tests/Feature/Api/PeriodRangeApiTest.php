@@ -89,7 +89,7 @@ class PeriodRangeApiTest extends TestCase
 
         $csv = $this->get('/api/v1/export?institution=rowad&format=csv&from=2025-11&to=2025-12')->streamedContent();
         $rows = array_map('str_getcsv', array_filter(explode("\n", substr($csv, 3))));
-        $this->assertSame(50, array_sum(array_column(array_slice($rows, 1), 10)));
+        $this->assertSame(50, array_sum(array_column(array_slice($rows, 1), 11)));
     }
 
     public function test_the_export_summary_states_the_range(): void

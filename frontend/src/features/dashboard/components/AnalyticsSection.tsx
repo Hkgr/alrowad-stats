@@ -62,8 +62,8 @@ export function AnalyticsSection({ filters, dashboard, onOpenProject, onSelectOf
       )}
 
       {a.heatmap && a.heatmap.rows.length >= 2 && (
-        <Card id="project-office-matrix" title="المشاريع والمكاتب" hint="أين يتركز نشاط كل مشروع وأين لا توجد سجلات">
-          <ProjectOfficeMatrix matrix={a.heatmap} selectedOffice={dashboard.filters.office?.slug ?? null} onOpenProject={onOpenProject} onSelectOffice={onSelectOffice} />
+        <Card id="project-office-matrix" title="المشاريع والمكاتب / المناطق" hint="أين يتركز نشاط كل مشروع وأين لا توجد سجلات">
+          <ProjectOfficeMatrix matrix={a.heatmap} selectedOffices={dashboard.filters.offices.map((o) => o.slug)} onOpenProject={onOpenProject} onSelectOffice={onSelectOffice} />
         </Card>
       )}
 

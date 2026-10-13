@@ -70,7 +70,7 @@ export function FiguresBand({ summary }: { summary: Summary }) {
         icon={Venus}
       />
       <div className="col-span-2 lg:col-span-1">
-        <Figure label="المكاتب" value={summary.offices_count} caption="مكاتب لديها سجلات" accent="var(--t-dark)" icon={Building2} />
+        <Figure label="المكاتب / المناطق" value={summary.offices_count} caption="لديها سجلات" accent="var(--t-dark)" icon={Building2} />
       </div>
     </div>
   )
