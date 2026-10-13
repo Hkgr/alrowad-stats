@@ -8,7 +8,7 @@ import { useBackdropMotion } from '../../hooks/useBackdropMotion'
 import { useFullscreen } from '../../hooks/useFullscreen'
 import { introProps, useIntro } from '../../hooks/useIntro'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
-import { formatNumber } from '../../lib/format'
+import { formatNumber, rangeLabel } from '../../lib/format'
 import { scopeTheme, themeFor, themeStyle, type Theme } from '../../lib/themes'
 import { SiteHeader } from '../../layout/SiteHeader'
 import type { BreakdownView, Dashboard, FilterState } from '../../types/api'
@@ -86,7 +86,7 @@ export function DashboardPage() {
   }, [level, reducedMotion])
 
   const resetAll = useCallback(
-    () => update({ institution: null, sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null, year: null, gender: null, age: null, disabled: null, view: null }),
+    () => update({ institution: null, sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null, year: null, from: null, to: null, gender: null, age: null, disabled: null, view: null }),
     [update],
   )
 
@@ -110,7 +110,7 @@ export function DashboardPage() {
 
         <SiteHeader
           {...introProps(intro, 0)}
-          periodLabel={data ? (data.filters.period?.label ?? 'كل الفترات') : null}
+          periodLabel={data ? (data.filters.period?.label ?? rangeLabel(data.filters.from?.label, data.filters.to?.label) ?? 'كل الفترات') : null}
           fullscreen={fullscreen}
           backdrop={backdrop}
           search={

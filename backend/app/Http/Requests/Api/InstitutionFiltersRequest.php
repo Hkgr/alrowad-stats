@@ -59,6 +59,8 @@ class InstitutionFiltersRequest extends FormRequest
             }],
             'gender' => ['bail', 'nullable', Rule::in(['male', 'female'])],
             'format' => ['bail', 'nullable', Rule::in(['xlsx', 'csv'])],
+            'from' => ['bail', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            'to' => ['bail', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
             'age' => ['bail', 'nullable', Rule::in(['under_18', 'adult'])],
             'disabled' => ['bail', 'nullable', Rule::in(['1', 'true'])],
             'period' => [
@@ -86,6 +88,23 @@ class InstitutionFiltersRequest extends FormRequest
                     $validator->errors()->add('disabled', 'ذوو الاحتياجات الخاصة لا يُقسَّمون حسب الجنس أو العمر في المصدر؛ لا يمكن الجمع بين هذه الفلاتر.');
 
                     return;
+                }
+                if (($input('from') !== null || $input('to') !== null) && $input('period') !== null) {
+                    $validator->errors()->add('period', 'اختر شهرًا واحدًا أو مجال أشهر، لا الاثنين معًا.');
+
+                    return;
+                }
+                if ($input('from') !== null && $input('to') !== null && $input('from') > $input('to')) {
+                    $validator->errors()->add('to', 'نهاية المجال يجب ألا تسبق بدايته.');
+
+                    return;
+                }
+                foreach (['from', 'to'] as $edge) {
+                    if ($input('year') !== null && $input($edge) !== null && (int) substr($input($edge), 0, 4) !== (int) $input('year')) {
+                        $validator->errors()->add($edge, 'هذا الشهر ليس ضمن السنة المحددة.');
+
+                        return;
+                    }
                 }
                 if ($input('year') !== null && $input('period') !== null && (int) $input('year') !== (int) substr($input('period'), 0, 4)) {
                     $validator->errors()->add('year', 'الفترة المحددة ليست ضمن هذه السنة.');
@@ -141,6 +160,8 @@ class InstitutionFiltersRequest extends FormRequest
             'gender.in' => 'الجنس يجب أن يكون male أو female.',
             'age.in' => 'الفئة العمرية يجب أن تكون under_18 أو adult.',
             'disabled.in' => 'قيمة فلتر ذوي الاحتياجات الخاصة يجب أن تكون 1.',
+            'from.regex' => 'صيغة بداية المجال يجب أن تكون YYYY-MM مثل 2026-01.',
+            'to.regex' => 'صيغة نهاية المجال يجب أن تكون YYYY-MM مثل 2026-09.',
             'period.regex' => 'صيغة الفترة يجب أن تكون YYYY-MM مثل 2026-05.',
         ];
     }
@@ -166,6 +187,11 @@ class InstitutionFiltersRequest extends FormRequest
 
         $sectorSlug = $input('sector');
         $year = $input('year') === null ? null : (int) $input('year');
+        $monthKey = fn (?string $key) => $key === null ? null : DashboardFilters::monthKey((int) substr($key, 0, 4), (int) substr($key, 5, 2));
+        $from = $monthKey($input('from'));
+        $to = $monthKey($input('to'));
+        // A range inside one year lists that year's projects, like a single month does.
+        $rangeYear = $from !== null && $to !== null && intdiv($from, 100) === intdiv($to, 100) ? intdiv($from, 100) : null;
         $project = $scoped(Project::class, $input('project'));
         // Main activity slugs are unique inside their project, sub activity slugs inside their main.
         $main = $project && $input('main_activity') !== null
@@ -179,7 +205,7 @@ class InstitutionFiltersRequest extends FormRequest
             project: $project,
             period: $period,
             office: $scoped(Office::class, $input('office')),
-            classificationYear: $period?->year ?? $year ?? BeneficiaryDashboardService::latestClassificationYear($institution->id),
+            classificationYear: $period?->year ?? $year ?? $rangeYear ?? BeneficiaryDashboardService::latestClassificationYear($institution->id),
             unclassified: $sectorSlug === DashboardFilters::UNCLASSIFIED,
             mainActivity: $main,
             subActivity: $sub,
@@ -187,6 +213,8 @@ class InstitutionFiltersRequest extends FormRequest
             gender: $input('gender'),
             age: $input('age'),
             disabled: $input('disabled') !== null,
+            from: $from,
+            to: $to,
         );
     }
 

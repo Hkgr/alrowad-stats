@@ -152,6 +152,9 @@ export interface Dashboard {
     sub_activity: ActivityRef | null
     period: { key: string; label: string } | null
     office: { slug: string; name: string } | null
+    /** First / last month of a range (either may be null). Never set together with `period`. */
+    from: { key: string; label: string } | null
+    to: { key: string; label: string } | null
     year: number | null
     gender: Gender | null
     age: AgeGroup | null
@@ -212,6 +215,9 @@ export interface FilterState {
   period: string | null
   office: string | null
   year: string | null
+  /** First / last month of a range, as YYYY-MM. */
+  from: string | null
+  to: string | null
   gender: string | null
   age: string | null
   /** '1' when only people with special needs are counted. */

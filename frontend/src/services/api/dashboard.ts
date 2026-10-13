@@ -15,6 +15,8 @@ export const fetchFilterOptions = (filters: FilterState, signal?: AbortSignal) =
       sub_activity: filters.sub_activity,
       period: filters.period,
       year: filters.year,
+      from: filters.from,
+      to: filters.to,
       gender: filters.gender,
       age: filters.age,
       disabled: filters.disabled,

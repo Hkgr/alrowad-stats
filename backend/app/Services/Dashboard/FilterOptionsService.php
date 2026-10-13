@@ -35,7 +35,7 @@ class FilterOptionsService
             ->where('institution_id', $institutionId)->where('reference_year', $year)->get()->keyBy('project_id');
 
         // Projects with records of any measure inside the period filter (not narrowed further).
-        $catalogScope = new DashboardFilters($filters->institution, period: $filters->period, classificationYear: $year, year: $filters->year);
+        $catalogScope = new DashboardFilters($filters->institution, period: $filters->period, classificationYear: $year, year: $filters->year, from: $filters->from, to: $filters->to);
         $withData = collect();
         foreach (Measure::all() as $m) {
             $withData = $withData->merge($this->dashboard->records($catalogScope, $m)->distinct()->pluck('activity_records.project_id'));
@@ -65,11 +65,12 @@ class FilterOptionsService
             $this->dashboard->records($filters->without('sub', 'office'), $measure)->distinct()->pluck('activity_records.sub_activity_id'),
         ) : collect();
 
-        $periodIds = $this->dashboard->records($filters->without('office'), $measure, period: false)->distinct()->pluck('activity_records.period_id');
+        // The month choices ignore the range itself, so a range can always be widened or changed.
+        $periodIds = $this->dashboard->records($filters->without('office', 'from', 'to'), $measure, period: false)->distinct()->pluck('activity_records.period_id');
         $officeIds = $this->dashboard->records($filters, $measure, office: false)->distinct()->pluck('activity_records.office_id');
 
         // Years that have records (the year and period filters themselves are ignored, so the choice stays open).
-        $years = Period::whereIn('id', $this->dashboard->records($filters->without('office', 'year'), $measure, period: false)->distinct()->pluck('activity_records.period_id'))
+        $years = Period::whereIn('id', $this->dashboard->records($filters->without('office', 'year', 'from', 'to'), $measure, period: false)->distinct()->pluck('activity_records.period_id'))
             ->distinct()->orderBy('year')->pluck('year')->map(fn ($y) => (int) $y)->values();
 
         return [
