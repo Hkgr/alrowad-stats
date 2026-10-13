@@ -9,12 +9,13 @@ type SortDir = 'asc' | 'desc'
 interface Props {
   rows: OfficeRow[]
   summary: Summary
-  selectedOffice: string | null
+  /** Chosen offices (several may be chosen). */
+  selectedOffices: string[]
   onSelectOffice: (slug: string) => void
 }
 
 const COLUMNS: { key: SortKey; label: string; numeric: boolean }[] = [
-  { key: 'name', label: 'المكتب', numeric: false },
+  { key: 'name', label: 'المكتب / المنطقة', numeric: false },
   { key: 'male', label: 'ذكور', numeric: true },
   { key: 'female', label: 'إناث', numeric: true },
   { key: 'total', label: 'الإجمالي', numeric: true },
@@ -26,7 +27,7 @@ function compare(a: OfficeRow, b: OfficeRow, key: SortKey): number {
   return (a[key] ?? 0) - (b[key] ?? 0)
 }
 
-export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: Props) {
+export function OfficesTable({ rows, summary, selectedOffices, onSelectOffice }: Props) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'total', dir: 'desc' })
 
@@ -51,7 +52,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full sm:max-w-xs">
           <label htmlFor="office-search" className="sr-only">
-            ابحث في المكاتب
+            ابحث في المكاتب والمناطق
           </label>
           <Search aria-hidden="true" className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
           <input
@@ -59,7 +60,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="ابحث باسم المكتب…"
+            placeholder="ابحث باسم المكتب أو المنطقة…"
             autoComplete="off"
             className="h-11 w-full rounded-xl border border-line bg-white ps-10 pe-4 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-ink-muted hover:border-ink-muted"
           />
@@ -73,7 +74,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <caption className="sr-only">
-            تفاصيل الاستفادات المسجلة حسب المكتب. يمكن الفرز بالنقر على عناوين الأعمدة.
+            تفاصيل الاستفادات المسجلة حسب المكتب / المنطقة. يمكن الفرز بالنقر على عناوين الأعمدة.
           </caption>
           <thead className="bg-paper">
             <tr>
@@ -97,7 +98,7 @@ export function OfficesTable({ rows, summary, selectedOffice, onSelectOffice }: 
           </thead>
           <tbody>
             {visible.map((row) => {
-              const selected = row.slug === selectedOffice
+              const selected = selectedOffices.includes(row.slug)
               return (
                 <tr key={row.slug} className={`border-t border-line transition-colors hover:bg-paper ${selected ? 'bg-brand-wash' : ''}`}>
                   <th scope="row" className="p-0 text-start font-semibold text-ink">

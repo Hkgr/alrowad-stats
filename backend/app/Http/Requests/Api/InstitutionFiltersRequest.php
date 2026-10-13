@@ -51,7 +51,18 @@ class InstitutionFiltersRequest extends FormRequest
             'main_activity' => ['bail', 'nullable', 'string', 'max:120'],
             'sub_activity' => ['bail', 'nullable', 'string', 'max:120'],
             'project' => ['bail', 'nullable', 'string', 'max:96', Rule::exists('projects', 'slug')->where('institution_id', $institutionId)],
-            'office' => ['bail', 'nullable', 'string', 'max:96', Rule::exists('offices', 'slug')->where('institution_id', $institutionId)],
+            // One or more office slugs, comma separated ("afrin,marea").
+            'office' => ['bail', 'nullable', 'string', 'max:1000', function (string $attribute, mixed $value, Closure $fail) use ($institutionId) {
+                $slugs = array_values(array_unique(array_filter(array_map('trim', explode(',', $value)))));
+                if (count($slugs) > 40) {
+                    $fail('عدد المكاتب المحددة كبير جدًا.');
+
+                    return;
+                }
+                if (Office::where('institution_id', $institutionId)->whereIn('slug', $slugs)->count() !== count($slugs)) {
+                    $fail('أحد المكاتب المحددة لا ينتمي إلى هذه المؤسسة.');
+                }
+            }],
             'year' => ['bail', 'nullable', 'integer', function (string $attribute, mixed $value, Closure $fail) use ($institutionId) {
                 if (! Period::where('institution_id', $institutionId)->where('year', (int) $value)->exists()) {
                     $fail('السنة المحددة غير موجودة لهذه المؤسسة.');
@@ -154,7 +165,6 @@ class InstitutionFiltersRequest extends FormRequest
             'institution.exists' => 'المؤسسة المحددة غير موجودة.',
             'sector.exists' => 'المسار المحدد لا ينتمي إلى هذه المؤسسة.',
             'project.exists' => 'المشروع المحدد لا ينتمي إلى هذه المؤسسة.',
-            'office.exists' => 'المكتب المحدد لا ينتمي إلى هذه المؤسسة.',
             'year.integer' => 'السنة يجب أن تكون رقمًا مثل 2026.',
             'format.in' => 'صيغة التصدير يجب أن تكون xlsx أو csv.',
             'gender.in' => 'الجنس يجب أن يكون male أو female.',
@@ -204,7 +214,9 @@ class InstitutionFiltersRequest extends FormRequest
             sector: $sectorSlug === DashboardFilters::UNCLASSIFIED ? null : $scoped(Sector::class, $sectorSlug),
             project: $project,
             period: $period,
-            office: $scoped(Office::class, $input('office')),
+            offices: $input('office') === null ? [] : Office::where('institution_id', $institution->id)
+                ->whereIn('slug', array_filter(array_map('trim', explode(',', $input('office')))))
+                ->orderBy('sort_order')->orderBy('id')->get()->all(),
             classificationYear: $period?->year ?? $year ?? $rangeYear ?? BeneficiaryDashboardService::latestClassificationYear($institution->id),
             unclassified: $sectorSlug === DashboardFilters::UNCLASSIFIED,
             mainActivity: $main,

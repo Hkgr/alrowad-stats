@@ -61,19 +61,19 @@ class ExportApiTest extends TestCase
         $this->addRecords();
 
         $rows = $this->csv();
-        $this->assertSame(['السنة', 'الشهر', 'المسار', 'المشروع', 'المكتب', 'النشاط الرئيسي', 'النشاط الفرعي', 'ذكور', 'إناث', 'الجنس غير مذكور', 'الإجمالي'], $rows[0]);
+        $this->assertSame(['السنة', 'الشهر', 'المسار', 'المشروع', 'المنطقة', 'المكتب', 'النشاط الرئيسي', 'النشاط الفرعي', 'ذكور', 'إناث', 'الجنس غير مذكور', 'الإجمالي'], $rows[0]);
 
         $total = $this->getJson('/api/v1/dashboard?institution=rowad')->json('data.summary.total');
         $this->assertSame(1450 + 90, $total);
-        $this->assertSame($total, array_sum(array_column(array_slice($rows, 1), 10)));
+        $this->assertSame($total, array_sum(array_column(array_slice($rows, 1), 11)));
 
         foreach (array_slice($rows, 1) as $row) {
-            $this->assertSame((int) $row[10], (int) $row[7] + (int) $row[8] + (int) $row[9], 'male + female + unreported = total');
+            $this->assertSame((int) $row[11], (int) $row[8] + (int) $row[9] + (int) $row[10], 'male + female + unreported = total');
         }
         $mine = collect(array_slice($rows, 1))->firstWhere(3, 'مشروع التصدير');
-        $this->assertSame(['2025', 'تشرين الأول', 'غير مصنف', 'مشروع التصدير', 'عفرين'], array_slice($mine, 0, 5));
+        $this->assertSame(['2025', 'تشرين الأول', 'غير مصنف', 'مشروع التصدير', 'حلب', 'عفرين'], array_slice($mine, 0, 6));
         // The two records share a group: 30 + 20 with a gender, 40 whose gender the source does not state.
-        $this->assertSame(['30', '20', '40', '90'], array_slice($mine, 7, 4));
+        $this->assertSame(['30', '20', '40', '90'], array_slice($mine, 8, 4));
     }
 
     public function test_filters_narrow_the_export_like_the_dashboard(): void
@@ -81,14 +81,14 @@ class ExportApiTest extends TestCase
         $project = $this->addRecords();
 
         $male = $this->csv('&gender=male&project='.$project->slug);
-        $this->assertSame(30, (int) $male[1][10]);
+        $this->assertSame(30, (int) $male[1][11]);
         $this->assertCount(2, $male, 'a record that does not report the gender is out, not zero');
 
         $adult = $this->csv('&age=adult&project='.$project->slug);
-        $this->assertSame(35, array_sum(array_column(array_slice($adult, 1), 10)));
+        $this->assertSame(35, array_sum(array_column(array_slice($adult, 1), 11)));
 
         $special = $this->csv('&disabled=1&project='.$project->slug);
-        $this->assertSame(4, array_sum(array_column(array_slice($special, 1), 10)));
+        $this->assertSame(4, array_sum(array_column(array_slice($special, 1), 11)));
 
     }
 
@@ -111,14 +111,14 @@ class ExportApiTest extends TestCase
         copy($response->baseResponse->getFile()->getPathname(), $copy);
 
         $book = new XlsxReader($copy);
-        $this->assertSame(['الملخص', 'التفاصيل', 'حسب المسار', 'حسب المشروع', 'حسب المكتب', 'حسب الشهر'], $book->sheetNames());
+        $this->assertSame(['الملخص', 'التفاصيل', 'حسب المسار', 'حسب المشروع', 'حسب المنطقة', 'حسب المكتب', 'حسب الشهر'], $book->sheetNames());
 
         $summary = collect($book->rows('الملخص'))->mapWithKeys(fn ($r) => [$r['A'] ?? '' => $r['B'] ?? '']);
         $this->assertSame('1540', $summary['الاستفادات المسجلة (الإجمالي)']);
         $this->assertSame('بلا فلاتر (كل البيانات)', $summary['الفلاتر المطبّقة']);
 
         $detail = array_slice($book->rows('التفاصيل'), 1);
-        $this->assertSame(1540, array_sum(array_map(fn ($r) => (int) $r['K'], $detail)));
+        $this->assertSame(1540, array_sum(array_map(fn ($r) => (int) $r['L'], $detail)));
 
         $offices = collect($book->rows('حسب المكتب'))->skip(1)->mapWithKeys(fn ($r) => [$r['A'] => (int) $r['E']]);
         $onScreen = collect($this->getJson('/api/v1/dashboard?institution=rowad')->json('data.offices'))->pluck('total', 'name');

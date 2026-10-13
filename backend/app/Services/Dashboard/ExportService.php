@@ -13,14 +13,14 @@ use Illuminate\Database\Query\JoinClause;
  */
 class ExportService
 {
-    private const HEADER = ['السنة', 'الشهر', 'المسار', 'المشروع', 'المكتب', 'النشاط الرئيسي', 'النشاط الفرعي', 'ذكور', 'إناث', 'الجنس غير مذكور', 'الإجمالي'];
+    private const HEADER = ['السنة', 'الشهر', 'المسار', 'المشروع', 'المنطقة', 'المكتب', 'النشاط الرئيسي', 'النشاط الفرعي', 'ذكور', 'إناث', 'الجنس غير مذكور', 'الإجمالي'];
 
     public function __construct(private readonly BeneficiaryDashboardService $dashboard) {}
 
     /**
      * Detail rows, oldest month first. male + female + unreported = total on every row.
      *
-     * @return list<array{year: int, month: int, sector: string, project: string, office: string, main: string, sub: string, male: int, female: int, unreported: int, total: int}>
+     * @return list<array{year: int, month: int, sector: string, project: string, region: string, office: string, main: string, sub: string, male: int, female: int, unreported: int, total: int}>
      */
     public function rows(DashboardFilters $f): array
     {
@@ -30,12 +30,13 @@ class ExportService
         return $this->dashboard->records($f, $measure)
             ->join('projects', fn (JoinClause $j) => $j->on('projects.id', '=', 'activity_records.project_id'))
             ->join('offices', fn (JoinClause $j) => $j->on('offices.id', '=', 'activity_records.office_id'))
+            ->leftJoin('regions', 'regions.id', '=', 'offices.region_id')
             ->leftJoin('sectors', 'sectors.id', '=', 'psa.sector_id')
             ->leftJoin('main_activities as ma', 'ma.id', '=', 'activity_records.main_activity_id')
             ->leftJoin('sub_activities as sa', 'sa.id', '=', 'activity_records.sub_activity_id')
-            ->groupBy('periods.year', 'periods.month', 'projects.id', 'projects.name', 'sectors.id', 'sectors.name', 'offices.id', 'offices.name', 'ma.id', 'ma.name', 'sa.id', 'sa.name')
+            ->groupBy('periods.year', 'periods.month', 'projects.id', 'projects.name', 'sectors.id', 'sectors.name', 'offices.id', 'offices.name', 'regions.id', 'regions.name', 'ma.id', 'ma.name', 'sa.id', 'sa.name')
             ->orderBy('periods.year')->orderBy('periods.month')->orderBy('projects.name')->orderBy('offices.name')->orderBy('ma.name')->orderBy('sa.name')
-            ->selectRaw('periods.year AS year, periods.month AS month, sectors.name AS sector, projects.name AS project, offices.name AS office, ma.name AS main, sa.name AS sub, '
+            ->selectRaw('periods.year AS year, periods.month AS month, sectors.name AS sector, projects.name AS project, regions.name AS region, offices.name AS office, ma.name AS main, sa.name AS sub, '
                 ."SUM({$slice['male']}) AS male, SUM({$slice['female']}) AS female, SUM({$slice['total']}) AS total")
             ->toBase()->get()
             ->map(function ($r) {
@@ -43,7 +44,7 @@ class ExportService
 
                 return [
                     'year' => (int) $r->year, 'month' => (int) $r->month,
-                    'sector' => $r->sector ?? 'غير مصنف', 'project' => $r->project, 'office' => $r->office,
+                    'sector' => $r->sector ?? 'غير مصنف', 'project' => $r->project, 'region' => $r->region ?? 'بدون منطقة', 'office' => $r->office,
                     'main' => $r->main ?? '', 'sub' => $r->sub ?? '',
                     'male' => (int) $r->male, 'female' => (int) $r->female,
                     'unreported' => max(0, $total - (int) $r->male - (int) $r->female), 'total' => $total,
@@ -56,7 +57,7 @@ class ExportService
     {
         $table = [self::HEADER];
         foreach ($this->rows($f) as $r) {
-            $table[] = [$r['year'], Period::MONTHS_AR[$r['month']], $r['sector'], $r['project'], $r['office'], $r['main'], $r['sub'], $r['male'], $r['female'], $r['unreported'], $r['total']];
+            $table[] = [$r['year'], Period::MONTHS_AR[$r['month']], $r['sector'], $r['project'], $r['region'], $r['office'], $r['main'], $r['sub'], $r['male'], $r['female'], $r['unreported'], $r['total']];
         }
 
         return $table;
@@ -72,7 +73,7 @@ class ExportService
         }
     }
 
-    /** Writes the workbook: summary, detail, and totals by track / project / office / month. */
+    /** Writes the workbook: summary, detail, and totals by track / project / region / office / month. */
     public function workbook(DashboardFilters $f, string $path): void
     {
         $rows = $this->rows($f);
@@ -80,12 +81,13 @@ class ExportService
 
         $writer = (new XlsxWriter)
             ->addSheet('الملخص', $this->summary($f, $data, $rows), [38, 48], header: false)
-            ->addSheet('التفاصيل', $this->table($f), [8, 14, 30, 36, 14, 30, 30, 10, 10, 16, 12]);
+            ->addSheet('التفاصيل', $this->table($f), [8, 14, 30, 36, 14, 14, 30, 30, 10, 10, 16, 12]);
 
         $group = fn (string $title, callable $key, callable $order, ?callable $label = null) => $this->grouped($title, $rows, $key, $order, $label);
         $writer
             ->addSheet('حسب المسار', ...$group('المسار', fn ($r) => $r['sector'], fn ($a, $b) => $b['total'] <=> $a['total']))
             ->addSheet('حسب المشروع', ...$group('المشروع', fn ($r) => $r['project'], fn ($a, $b) => $b['total'] <=> $a['total']))
+            ->addSheet('حسب المنطقة', ...$group('المنطقة', fn ($r) => $r['region'], fn ($a, $b) => $b['total'] <=> $a['total']))
             ->addSheet('حسب المكتب', ...$group('المكتب', fn ($r) => $r['office'], fn ($a, $b) => $b['total'] <=> $a['total']))
             ->addSheet('حسب الشهر', ...$group('الشهر', fn ($r) => sprintf('%04d-%02d', $r['year'], $r['month']), fn ($a, $b) => strcmp($a['key'], $b['key']), fn ($key) => $this->monthLabel($key)))
             ->save($path);
@@ -192,7 +194,7 @@ class ExportService
             $f->year ? 'السنة: '.$f->year : null,
             $f->period ? 'الفترة: '.$f->period->label() : null,
             $f->hasRange() ? 'الأشهر: '.($f->from ? 'من '.$this->monthName($f->from) : 'من أول شهر').' '.($f->to ? 'إلى '.$this->monthName($f->to) : 'إلى آخر شهر') : null,
-            $f->office ? 'المكتب: '.$f->office->name : null,
+            $f->offices !== [] ? 'المكتب / المنطقة: '.implode('، ', array_map(fn ($o) => $o->name, $f->offices)) : null,
             $f->gender ? 'الجنس: '.($f->gender === 'male' ? 'ذكور فقط' : 'إناث فقط') : null,
             $f->age ? 'العمر: '.($f->age === 'under_18' ? 'أقل من 18 سنة' : '18 سنة فأكثر') : null,
             $f->disabled ? 'ذوو الاحتياجات الخاصة فقط' : null,

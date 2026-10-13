@@ -133,7 +133,7 @@ export function DashboardPage() {
               onMainActivity={nav.goMainActivity}
               onSubActivity={nav.goSubActivity}
               onPeriod={nav.setPeriod}
-              onOffice={nav.toggleOffice}
+              onOffices={nav.setOffices}
               onFilters={update}
               onReset={nav.reset}
               hasActiveFilters={hasActiveFilters}
@@ -233,7 +233,7 @@ function LevelContent({ data, filters, intro, view, nav, theme }: LevelProps) {
         <Suspense fallback={chartFallback()}>
           <StackedGenderChart rows={data.comparison} onSelectOffice={nav.toggleOffice} />
         </Suspense>
-        <OfficesTable rows={data.offices} summary={data.summary} selectedOffice={data.filters.office?.slug ?? null} onSelectOffice={nav.toggleOffice} />
+        <OfficesTable rows={data.offices} summary={data.summary} selectedOffices={nav.offices} onSelectOffice={nav.toggleOffice} />
       </div>
     ) : (
       <NoDataState compact />
@@ -278,7 +278,7 @@ function LevelContent({ data, filters, intro, view, nav, theme }: LevelProps) {
 
       {data.has_data ? (
         <div className={`grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] ${charts.className}`} style={charts.style}>
-          <Card id="offices-rank" title="الاستفادات حسب المكتب" hint="اضغط على مكتب لتصفيته">
+          <Card id="offices-rank" title="الاستفادات حسب المكتب / المنطقة" hint="اضغط على مكتب لإضافته إلى التصفية أو إزالته">
             <Suspense fallback={chartFallback()}>
               <OfficeRankingChart rows={data.comparison} onSelectOffice={nav.toggleOffice} color={theme.primary} outline={theme.outline} />
             </Suspense>
@@ -341,7 +341,7 @@ function LevelContent({ data, filters, intro, view, nav, theme }: LevelProps) {
 
       <Card
         id="breakdown"
-        title={inProject ? 'التفاصيل حسب المكتب' : undefined}
+        title={inProject ? 'التفاصيل حسب المكتب / المنطقة' : undefined}
         actions={
           inProject ? undefined : (
             <Tabs<BreakdownView>
@@ -351,7 +351,7 @@ function LevelContent({ data, filters, intro, view, nav, theme }: LevelProps) {
               onChange={nav.setView}
               items={[
                 { value: 'projects', label: 'المشاريع', count: data.projects.length },
-                { value: 'offices', label: 'المكاتب', count: data.offices.length },
+                { value: 'offices', label: 'المكاتب / المناطق', count: data.offices.length },
               ]}
             />
           )

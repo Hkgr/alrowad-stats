@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { parseOffices, serializeOffices } from '../../lib/regions'
 import type { BreakdownView, FilterKey, FilterState } from '../../types/api'
 
 const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'main_activity', 'sub_activity', 'period', 'office', 'year', 'from', 'to', 'gender', 'age', 'disabled']
@@ -74,10 +75,16 @@ export function useDashboardFilters() {
   const setPeriod = useCallback((key: string | null) => update(key ? { period: key, from: null, to: null } : { period: null }), [update])
   const setView = useCallback((next: BreakdownView) => update({ view: next }, { replace: true }), [update])
 
-  /** Clicking the already-selected office clears it, like deselecting in Power BI. */
+  const offices = useMemo(() => parseOffices(filters.office), [filters.office])
+  const setOffices = useCallback((slugs: string[]) => update({ office: serializeOffices(slugs) }), [update])
+
+  /** Clicking a chosen office un-chooses it and any other adds it, like a Power BI multi-selection. */
   const toggleOffice = useCallback(
-    (slug: string | null) => update({ office: slug && filters.office !== slug ? slug : null }),
-    [filters.office, update],
+    (slug: string | null) => {
+      if (!slug) return setOffices([])
+      setOffices(offices.includes(slug) ? offices.filter((s) => s !== slug) : [...offices, slug])
+    },
+    [offices, setOffices],
   )
 
   /** Back to the institution overview with no filters (the institution itself is kept). */
@@ -97,6 +104,6 @@ export function useDashboardFilters() {
 
   return {
     filters, view, update, goOverview, goSector, goProject, goMainActivity, goSubActivity,
-    setPeriod, setView, toggleOffice, reset, hasActiveFilters,
+    offices, setOffices, setPeriod, setView, toggleOffice, reset, hasActiveFilters,
   }
 }

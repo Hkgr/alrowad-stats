@@ -15,5 +15,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(LobaWaFarhaMay2026SampleSeeder::class);
+        $this->call(RegionSeeder::class);
     }
 }

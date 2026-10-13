@@ -39,6 +39,21 @@ export interface FilterOptions {
   sub_activities: (ActivityRef & { has_data: boolean })[]
   periods: PeriodOption[]
   offices: { slug: string; name: string }[]
+  /** Offices grouped by region, for the multi-select. */
+  regions: RegionOption[]
+}
+
+/**
+ * A region and its offices. A region with `has_offices: false` has none of its own: its single entry
+ * stands for the region (the figures are recorded under its name) and `offices_count` is 0.
+ */
+export interface RegionOption {
+  slug: string
+  name: string
+  has_offices: boolean
+  offices_count: number
+  has_data: boolean
+  offices: { slug: string; name: string; has_data: boolean }[]
 }
 
 export interface Measure {
@@ -151,7 +166,8 @@ export interface Dashboard {
     main_activity: ActivityRef | null
     sub_activity: ActivityRef | null
     period: { key: string; label: string } | null
-    office: { slug: string; name: string } | null
+    /** The chosen offices (empty = all). */
+    offices: { slug: string; name: string }[]
     /** First / last month of a range (either may be null). Never set together with `period`. */
     from: { key: string; label: string } | null
     to: { key: string; label: string } | null
@@ -213,6 +229,7 @@ export interface FilterState {
   main_activity: string | null
   sub_activity: string | null
   period: string | null
+  /** Chosen office slugs, comma separated ("afrin,marea"); null = all. */
   office: string | null
   year: string | null
   /** First / last month of a range, as YYYY-MM. */

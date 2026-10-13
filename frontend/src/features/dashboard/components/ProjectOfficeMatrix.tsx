@@ -5,7 +5,7 @@ type Matrix = NonNullable<Analytics['heatmap']>
 
 interface Props {
   matrix: Matrix
-  selectedOffice: string | null
+  selectedOffices: string[]
   onOpenProject: (slug: string) => void
   onSelectOffice: (slug: string) => void
 }
@@ -22,7 +22,7 @@ function tint(share: number | null, rowMax: number): string {
  * Project × office table. The colour shows where each project concentrates (share of the project's
  * own total), the number is the exact count. A cell with no record is a dash — absence, not zero.
  */
-export function ProjectOfficeMatrix({ matrix, selectedOffice, onOpenProject, onSelectOffice }: Props) {
+export function ProjectOfficeMatrix({ matrix, selectedOffices, onOpenProject, onSelectOffice }: Props) {
   const { offices, rows } = matrix
   const th = 'whitespace-nowrap border-b border-line-strong bg-paper-deep/60 px-2 py-2 text-xs font-bold text-ink-soft'
 
@@ -41,9 +41,9 @@ export function ProjectOfficeMatrix({ matrix, selectedOffice, onOpenProject, onS
                   <button
                     type="button"
                     onClick={() => onSelectOffice(office.slug)}
-                    aria-pressed={selectedOffice === office.slug}
+                    aria-pressed={selectedOffices.includes(office.slug)}
                     title={`${office.name}: ${formatNumber(office.total)}`}
-                    className={`cursor-pointer rounded-md px-1.5 py-0.5 font-bold hover:bg-white ${selectedOffice === office.slug ? 'bg-white text-ink ring-1 ring-ink-muted' : ''}`}
+                    className={`cursor-pointer rounded-md px-1.5 py-0.5 font-bold hover:bg-white ${selectedOffices.includes(office.slug) ? 'bg-white text-ink ring-1 ring-ink-muted' : ''}`}
                   >
                     {office.name}
                   </button>
