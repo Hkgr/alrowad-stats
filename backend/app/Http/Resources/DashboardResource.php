@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\DataSource;
+use App\Models\Period;
 use App\Models\Sector;
 use App\Services\Dashboard\DashboardData;
 use App\Services\Dashboard\DashboardFilters;
@@ -35,7 +36,10 @@ class DashboardResource extends JsonResource
                 'main_activity' => $f->mainActivity ? ['slug' => $f->mainActivity->slug, 'name' => $f->mainActivity->name] : null,
                 'sub_activity' => $f->subActivity ? ['slug' => $f->subActivity->slug, 'name' => $f->subActivity->name] : null,
                 'period' => $f->period ? ['key' => $f->period->key(), 'label' => $f->period->label()] : null,
-                'office' => $f->office ? ['slug' => $f->office->slug, 'name' => $f->office->name] : null,
+                'from' => $this->month($f->from),
+                'to' => $this->month($f->to),
+                // The chosen offices (empty = all). Regions are only a way to pick several at once.
+                'offices' => array_map(fn ($o) => ['slug' => $o->slug, 'name' => $o->label()], $f->offices),
                 'year' => $f->year,
                 'gender' => $f->gender,
                 'age' => $f->age,
@@ -188,6 +192,16 @@ class DashboardResource extends JsonResource
                 'share' => $this->share($topOffice->total, $officesTotal),
             ] : null,
         ];
+    }
+
+    /**
+     * A `from` / `to` month as the same key and label the periods use.
+     *
+     * @return array{key: string, label: string}|null
+     */
+    private function month(?int $key): ?array
+    {
+        return $key === null ? null : ['key' => sprintf('%04d-%02d', intdiv($key, 100), $key % 100), 'label' => Period::MONTHS_AR[$key % 100].' '.intdiv($key, 100)];
     }
 
     /** @return array<string, mixed>|null */

@@ -87,9 +87,9 @@ class BeneficiaryDashboardService
         $activeSector = $f->sector ?? ($f->project && $year && ! $f->unclassified ? $f->project->sectorIn($year) : null);
 
         $all = $this->officeRows($f, $measure);
-        $selected = $f->office?->slug;
-        $comparison = array_map(fn (OfficeFigures $row) => $row->withSelected($row->slug === $selected), $all);
-        $offices = $selected === null ? $all : array_values(array_filter($all, fn (OfficeFigures $row) => $row->slug === $selected));
+        $selected = array_map(fn ($office) => $office->slug, $f->offices);
+        $comparison = array_map(fn (OfficeFigures $row) => $row->withSelected(in_array($row->slug, $selected, true)), $all);
+        $offices = $selected === [] ? $all : array_values(array_filter($all, fn (OfficeFigures $row) => in_array($row->slug, $selected, true)));
 
         $mainActivities = $f->project ? $this->mainActivities($f, $measure) : [];
         $subActivities = $f->mainActivity ? $this->subActivities($f, $measure) : [];
@@ -189,6 +189,8 @@ class BeneficiaryDashboardService
             ->where('activity_records.measure_id', $measure->id)
             ->where('activity_records.is_active', true)
             ->when($f->year, fn (Builder $q) => $q->where('periods.year', $f->year))
+            ->when($f->from, fn (Builder $q) => $q->whereRaw('(periods.year * 100 + periods.month) >= ?', [$f->from]))
+            ->when($f->to, fn (Builder $q) => $q->whereRaw('(periods.year * 100 + periods.month) <= ?', [$f->to]))
             ->when($f->demographic(), function (Builder $q) use ($f) {
                 $required = array_map(fn (string $column) => "activity_records.{$column} IS NOT NULL", $this->sliceFor($f)['required']);
                 $q->whereRaw('('.implode(' OR ', $required).')');
@@ -199,7 +201,7 @@ class BeneficiaryDashboardService
             ->when($f->project, fn (Builder $q) => $q->where('activity_records.project_id', $f->project->id))
             ->when($f->mainActivity, fn (Builder $q) => $q->where('activity_records.main_activity_id', $f->mainActivity->id))
             ->when($f->subActivity, fn (Builder $q) => $q->where('activity_records.sub_activity_id', $f->subActivity->id))
-            ->when($office && $f->office, fn (Builder $q) => $q->where('activity_records.office_id', $f->office->id));
+            ->when($office && $f->offices !== [], fn (Builder $q) => $q->whereIn('activity_records.office_id', $f->officeIds()));
     }
 
     /** Totals of a query, or null when it matches no record (absence is not zero). */
@@ -261,8 +263,8 @@ class BeneficiaryDashboardService
     private function projectSummaries(DashboardFilters $f, Measure $measure, ?int $year, ?Sector $activeSector): array
     {
         $scope = new DashboardFilters(
-            $f->institution, $activeSector, null, $f->period, $f->office, $year, $f->unclassified && ! $activeSector,
-            year: $f->year, gender: $f->gender, age: $f->age, disabled: $f->disabled,
+            $f->institution, $activeSector, null, $f->period, $f->offices, $year, $f->unclassified && ! $activeSector,
+            year: $f->year, gender: $f->gender, age: $f->age, disabled: $f->disabled, from: $f->from, to: $f->to,
         );
         $figures = $this->grouped($this->records($scope, $measure), 'activity_records.project_id');
 

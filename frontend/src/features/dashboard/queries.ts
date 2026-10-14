@@ -13,7 +13,7 @@ export function useInstitutions() {
 /** `filters.institution` must be resolved before calling; queries stay idle until then. */
 export function useFilterOptions(filters: FilterState) {
   return useQuery({
-    queryKey: ['filters', filters.institution, filters.sector, filters.project, filters.main_activity, filters.sub_activity, filters.period, filters.year, filters.gender, filters.age, filters.disabled],
+    queryKey: ['filters', filters.institution, filters.sector, filters.project, filters.main_activity, filters.sub_activity, filters.period, filters.year, filters.from, filters.to, filters.gender, filters.age, filters.disabled],
     queryFn: ({ signal }) => fetchFilterOptions(filters, signal),
     enabled: Boolean(filters.institution),
     placeholderData: keepPreviousData,

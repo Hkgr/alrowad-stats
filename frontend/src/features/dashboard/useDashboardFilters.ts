@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { parseOffices, serializeOffices } from '../../lib/regions'
 import type { BreakdownView, FilterKey, FilterState } from '../../types/api'
 
-const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'main_activity', 'sub_activity', 'period', 'office', 'year', 'gender', 'age', 'disabled']
+const KEYS: FilterKey[] = ['institution', 'sector', 'project', 'main_activity', 'sub_activity', 'period', 'office', 'year', 'from', 'to', 'gender', 'age', 'disabled']
 const VIEWS: BreakdownView[] = ['projects', 'offices', 'sectors']
 
 type Changes = Partial<FilterState> & { view?: BreakdownView | null }
@@ -25,6 +26,8 @@ export function useDashboardFilters() {
       period: params.get('period'),
       office: params.get('office'),
       year: params.get('year'),
+      from: params.get('from'),
+      to: params.get('to'),
       gender: params.get('gender'),
       age: params.get('age'),
       disabled: params.get('disabled'),
@@ -68,13 +71,20 @@ export function useDashboardFilters() {
   /** The main activity belongs to the current project; changing it drops the sub activity. */
   const goMainActivity = useCallback((slug: string | null) => update({ main_activity: slug, sub_activity: null }), [update])
   const goSubActivity = useCallback((slug: string | null) => update({ sub_activity: slug }), [update])
-  const setPeriod = useCallback((key: string | null) => update({ period: key }), [update])
+  // One month and a range are exclusive: choosing a month drops the range.
+  const setPeriod = useCallback((key: string | null) => update(key ? { period: key, from: null, to: null } : { period: null }), [update])
   const setView = useCallback((next: BreakdownView) => update({ view: next }, { replace: true }), [update])
 
-  /** Clicking the already-selected office clears it, like deselecting in Power BI. */
+  const offices = useMemo(() => parseOffices(filters.office), [filters.office])
+  const setOffices = useCallback((slugs: string[]) => update({ office: serializeOffices(slugs) }), [update])
+
+  /** Clicking a chosen office un-chooses it and any other adds it, like a Power BI multi-selection. */
   const toggleOffice = useCallback(
-    (slug: string | null) => update({ office: slug && filters.office !== slug ? slug : null }),
-    [filters.office, update],
+    (slug: string | null) => {
+      if (!slug) return setOffices([])
+      setOffices(offices.includes(slug) ? offices.filter((s) => s !== slug) : [...offices, slug])
+    },
+    [offices, setOffices],
   )
 
   /** Back to the institution overview with no filters (the institution itself is kept). */
@@ -82,18 +92,18 @@ export function useDashboardFilters() {
     () =>
       update({
         sector: null, project: null, main_activity: null, sub_activity: null, period: null, office: null,
-        year: null, gender: null, age: null, disabled: null, view: null,
+        year: null, from: null, to: null, gender: null, age: null, disabled: null, view: null,
       }),
     [update],
   )
 
   const hasActiveFilters = Boolean(
     filters.sector || filters.project || filters.main_activity || filters.sub_activity || filters.period || filters.office ||
-      filters.year || filters.gender || filters.age || filters.disabled,
+      filters.year || filters.from || filters.to || filters.gender || filters.age || filters.disabled,
   )
 
   return {
     filters, view, update, goOverview, goSector, goProject, goMainActivity, goSubActivity,
-    setPeriod, setView, toggleOffice, reset, hasActiveFilters,
+    offices, setOffices, setPeriod, setView, toggleOffice, reset, hasActiveFilters,
   }
 }

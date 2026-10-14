@@ -35,7 +35,7 @@ function describeFilters(data: Dashboard): string[] {
   if (f.project && data.level !== 'project') out.push(`المشروع: ${f.project.name}`)
   if (f.main_activity && data.level !== 'main_activity') out.push(`النشاط الرئيسي: ${f.main_activity.name}`)
   if (f.year) out.push(`السنة: ${f.year}`)
-  if (f.office) out.push(`المكتب: ${f.office.name}`)
+  if (f.offices.length > 0) out.push(`المكتب / المنطقة: ${f.offices.map((o) => o.name).join('، ')}`)
   if (f.gender) out.push(`الجنس: ${f.gender === 'male' ? 'ذكور فقط' : 'إناث فقط'}`)
   if (f.age) out.push(`العمر: ${f.age === 'under_18' ? 'أقل من 18 سنة' : '18 سنة فأكثر'}`)
   if (f.disabled) out.push('ذوو الاحتياجات الخاصة فقط')
@@ -68,7 +68,7 @@ function detailRows(data: Dashboard): { title: string; rows: { name: string; tot
   if (data.level === 'overview' || data.level === 'sector') return pick('أكبر المشاريع', data.projects)
   if (data.level === 'project' && data.activities.main.length > 0) return pick('الأنشطة الرئيسية', data.activities.main)
   if (data.level === 'main_activity' && data.activities.sub.length > 0) return pick('الأنشطة الفرعية', data.activities.sub)
-  return pick('المكاتب', data.offices)
+  return pick('المكاتب / المناطق', data.offices)
 }
 
 /**
@@ -168,7 +168,7 @@ function ReportBody({ data, theme, today }: { data: Dashboard; theme: ReturnType
             />
             <Box label="الذكور" value={formatNumber(summary.male)} caption={`${formatPercent(summary.male_share)} من الإجمالي`} />
             <Box label="الإناث" value={formatNumber(summary.female)} caption={`${formatPercent(summary.female_share)} من الإجمالي`} />
-            <Box label="المكاتب" value={formatNumber(summary.offices_count)} caption={`${formatNumber(summary.projects_with_data)} مشروعًا لديها بيانات`} />
+            <Box label="المكاتب / المناطق" value={formatNumber(summary.offices_count)} caption={`${formatNumber(summary.projects_with_data)} مشروعًا لديها بيانات`} />
           </section>
 
           {data.other_measures.length > 0 && (
@@ -212,7 +212,7 @@ function ReportBody({ data, theme, today }: { data: Dashboard; theme: ReturnType
           {/* Full width each: the months chart needs more than half a page to show every month. */}
           <section aria-label="الرسوم" className="space-y-5">
             <div className="avoid-break min-w-0 rounded-xl border border-line p-4">
-              <h2 className="mb-2 text-base font-bold text-ink">الاستفادات حسب المكتب</h2>
+              <h2 className="mb-2 text-base font-bold text-ink">الاستفادات حسب المكتب / المنطقة</h2>
               <OfficeRankingChart rows={data.comparison} onSelectOffice={noop} color={theme.primary} outline={theme.outline} />
             </div>
             <div className="avoid-break min-w-0 rounded-xl border border-line p-4">

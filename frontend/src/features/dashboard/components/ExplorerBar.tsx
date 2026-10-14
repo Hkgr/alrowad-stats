@@ -1,6 +1,9 @@
 import { ChevronLeft, RotateCcw, X } from 'lucide-react'
 import { SelectField, type SelectOption } from '../../../components/ui/SelectField'
+import { rangeLabel } from '../../../lib/format'
+import { parseOffices, selectionChips } from '../../../lib/regions'
 import type { Dashboard, FilterOptions, FilterState } from '../../../types/api'
+import { RegionPicker } from './RegionPicker'
 import { ShareExportBar } from './ShareExportBar'
 
 interface Props {
@@ -13,7 +16,8 @@ interface Props {
   onMainActivity: (slug: string | null) => void
   onSubActivity: (slug: string | null) => void
   onPeriod: (key: string | null) => void
-  onOffice: (slug: string | null) => void
+  /** Replaces the chosen offices (an empty list = all). */
+  onOffices: (slugs: string[]) => void
   /** Year, gender, age group and special-needs filters (each change is one history entry). */
   onFilters: (changes: Partial<FilterState>) => void
   onReset: () => void
@@ -31,7 +35,7 @@ function withCurrent(list: SelectOption[], current: { value: string; label: stri
 
 /**
  * Where am I + what is applied: breadcrumb (overview › track › project › main › sub activity),
- * the small filters (period, office, main activity, sub activity), removable chips and one reset.
+ * the small filters (period, region/offices, main activity, sub activity), removable chips and one reset.
  */
 export function ExplorerBar(props: Props) {
   const { filters, dashboard, options, hasActiveFilters, busy } = props
@@ -40,15 +44,20 @@ export function ExplorerBar(props: Props) {
   const main = dashboard?.filters.main_activity ?? null
   const sub = dashboard?.filters.sub_activity ?? null
   const period = dashboard?.filters.period ?? null
-  const office = dashboard?.filters.office ?? null
+  const offices = parseOffices(filters.office)
+  const officeNames = Object.fromEntries((dashboard?.filters.offices ?? []).map((o) => [o.slug, o.name]))
   const { gender, age, disabled } = filters
+  const from = dashboard?.filters.from ?? null
+  const to = dashboard?.filters.to ?? null
 
   const periodOptions = withCurrent((options?.periods ?? []).map((p) => ({ value: p.key, label: p.label })), period && { value: period.key, label: period.label })
-  const officeOptions = withCurrent((options?.offices ?? []).map((o) => ({ value: o.slug, label: o.name })), office && { value: office.slug, label: office.name })
   const yearOptions = withCurrent(
     (options?.years ?? []).map((y) => ({ value: String(y), label: String(y) })),
     filters.year ? { value: filters.year, label: filters.year } : null,
   )
+  // Same month list for the range ends and the single month (it ignores the range itself).
+  const fromOptions = withCurrent(periodOptions, from && { value: from.key, label: from.label })
+  const toOptions = withCurrent(periodOptions, to && { value: to.key, label: to.label })
   const mainOptions = withCurrent(
     (options?.main_activities ?? []).map((a) => ({ value: a.slug, label: a.has_data ? a.name : `${a.name} (لا بيانات)` })),
     main && { value: main.slug, label: main.name },
@@ -74,7 +83,10 @@ export function ExplorerBar(props: Props) {
   if (main) chips.push({ key: 'main', label: `نشاط رئيسي: ${main.name}`, onRemove: () => props.onMainActivity(null) })
   if (sub) chips.push({ key: 'sub', label: `نشاط فرعي: ${sub.name}`, onRemove: () => props.onSubActivity(null) })
   if (period) chips.push({ key: 'period', label: period.label, onRemove: () => props.onPeriod(null) })
-  if (office) chips.push({ key: 'office', label: `مكتب ${office.name}`, onRemove: () => props.onOffice(null) })
+  for (const chip of selectionChips(options?.regions ?? [], offices, officeNames)) {
+    chips.push({ key: `office:${chip.key}`, label: chip.label, onRemove: () => props.onOffices(offices.filter((s) => !chip.slugs.includes(s))) })
+  }
+  if (from || to) chips.push({ key: 'range', label: rangeLabel(from?.label, to?.label) ?? '', onRemove: () => props.onFilters({ from: null, to: null }) })
   if (filters.year) chips.push({ key: 'year', label: `سنة ${filters.year}`, onRemove: () => props.onFilters({ year: null }) })
   if (gender) chips.push({ key: 'gender', label: GENDER_LABEL[gender] ?? gender, onRemove: () => props.onFilters({ gender: null }) })
   if (age) chips.push({ key: 'age', label: AGE_LABEL[age] ?? age, onRemove: () => props.onFilters({ age: null }) })
@@ -109,7 +121,7 @@ export function ExplorerBar(props: Props) {
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4" role="group" aria-label="الفلاتر">
         <SelectField label="الفترة" value={filters.period ?? ''} options={periodOptions} allLabel="كل الفترات" onChange={(v) => props.onPeriod(v || null)} />
-        <SelectField label="المكتب" value={filters.office ?? ''} options={officeOptions} allLabel="كل المكاتب" onChange={(v) => props.onOffice(v || null)} />
+        <RegionPicker regions={options?.regions ?? []} selected={offices} names={officeNames} onChange={props.onOffices} />
         <SelectField
           label="النشاط الرئيسي"
           value={filters.main_activity ?? ''}
@@ -128,14 +140,36 @@ export function ExplorerBar(props: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4" role="group" aria-label="فلاتر الفئة">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6" role="group" aria-label="فلاتر الفئة">
         {/* A period outside the chosen year can no longer be selected, so it is dropped with the change. */}
         <SelectField
           label="السنة"
           value={filters.year ?? ''}
           options={yearOptions}
           allLabel="كل السنوات"
-          onChange={(v) => props.onFilters({ year: v || null, ...(v && filters.period && !filters.period.startsWith(v) ? { period: null } : {}) })}
+          onChange={(v) =>
+            props.onFilters({
+              year: v || null,
+              ...(v && filters.period && !filters.period.startsWith(v) ? { period: null } : {}),
+              ...(v && filters.from && !filters.from.startsWith(v) ? { from: null } : {}),
+              ...(v && filters.to && !filters.to.startsWith(v) ? { to: null } : {}),
+            })
+          }
+        />
+        {/* A range replaces the single month; an end that would cross the other end clears that other end. */}
+        <SelectField
+          label="من شهر"
+          value={filters.from ?? ''}
+          options={fromOptions}
+          allLabel="من أول شهر"
+          onChange={(v) => props.onFilters({ from: v || null, period: null, ...(v && filters.to && v > filters.to ? { to: null } : {}) })}
+        />
+        <SelectField
+          label="إلى شهر"
+          value={filters.to ?? ''}
+          options={toOptions}
+          allLabel="إلى آخر شهر"
+          onChange={(v) => props.onFilters({ to: v || null, period: null, ...(v && filters.from && v < filters.from ? { from: null } : {}) })}
         />
         <SelectField
           label="الجنس"
