@@ -191,6 +191,8 @@ class BeneficiaryDashboardService
             ->when($f->year, fn (Builder $q) => $q->where('periods.year', $f->year))
             ->when($f->from, fn (Builder $q) => $q->whereRaw('(periods.year * 100 + periods.month) >= ?', [$f->from]))
             ->when($f->to, fn (Builder $q) => $q->whereRaw('(periods.year * 100 + periods.month) <= ?', [$f->to]))
+            // A year report is not inside a month span.
+            ->when($f->hasRange(), fn (Builder $q) => $q->where('periods.month', '>', 0))
             ->when($f->demographic(), function (Builder $q) use ($f) {
                 $required = array_map(fn (string $column) => "activity_records.{$column} IS NOT NULL", $this->sliceFor($f)['required']);
                 $q->whereRaw('('.implode(' OR ', $required).')');

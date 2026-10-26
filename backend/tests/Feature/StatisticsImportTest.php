@@ -225,7 +225,7 @@ class StatisticsImportTest extends TestCase
         $this->getJson('/api/v1/dashboard?institution=rowad&project=loba-wa-farha')->assertJsonPath('data.summary.total', 1450);
     }
 
-    public function test_families_are_a_separate_measure_and_percentage_genders_are_not_counts(): void
+    public function test_families_are_a_separate_measure_and_percentage_genders_count(): void
     {
         XlsxFixture::create(['أضحيتي' => [
             1 => ['A' => 'المكتب', 'B' => 'level 1', 'C' => 'الشهر', 'D' => 'عدد الأضاحي', 'E' => 'عدد العوائل', 'F' => 'العدد الكامل'],
@@ -247,8 +247,8 @@ class StatisticsImportTest extends TestCase
 
         $ramadan = ActivityRecord::where('project_id', Project::where('slug', 'ramadan')->value('id'))->first();
         $this->assertSame(120, $ramadan->total_count);
-        $this->assertNull($ramadan->male_count);
-        $this->assertNull($ramadan->female_count);
+        $this->assertSame(72, $ramadan->male_count);
+        $this->assertSame(48, $ramadan->female_count);
 
         // People and families are reported separately, never summed.
         $this->getJson('/api/v1/dashboard?institution=rowad&project=adahi')
@@ -257,7 +257,9 @@ class StatisticsImportTest extends TestCase
             ->assertJsonPath('data.other_measures.0.items', 14);
         $this->getJson('/api/v1/dashboard?institution=rowad&project=ramadan')
             ->assertJsonPath('data.summary.total', 120)
-            ->assertJsonPath('data.summary.gender_unreported', 120);
+            ->assertJsonPath('data.summary.male', 72)
+            ->assertJsonPath('data.summary.female', 48)
+            ->assertJsonPath('data.summary.gender_unreported', 0);
     }
 
     public function test_january_after_december_with_a_contradicting_year_is_not_imported(): void
@@ -276,6 +278,31 @@ class StatisticsImportTest extends TestCase
         $this->assertSame(1, $this->athrRecords()->count());
         $this->assertSame(['2025-12'], $report['files']['2025/أثر.xlsx']['periods']);
         $this->assertContains('period_unresolved', collect($report['issues'])->pluck('code')->all());
+    }
+
+    public function test_a_whole_year_sheet_imports_as_a_year_report(): void
+    {
+        XlsxFixture::create(['كل الأشهر' => [
+            1 => self::HEADER,
+            2 => ['A' => 'جرابلس', 'B' => 'دعم التعليم', 'C' => 'دورة', 'K' => 10, 'L' => 8, 'N' => 18],
+        ]], "{$this->root}/2025/قدرات.xlsx");
+
+        $report = $this->import(['2025/قدرات.xlsx' => ['project' => 'أثر', 'year' => 2025]]);
+
+        $this->assertSame('imported', $report['files']['2025/قدرات.xlsx']['status']);
+        $this->assertSame(['2025-00'], $report['files']['2025/قدرات.xlsx']['periods']);
+        $this->assertSame(18, (int) $this->athrRecords()->sum('total_count'));
+        $this->assertNotContains('sheet_without_month', collect($report['issues'])->pluck('code')->all());
+        $this->assertNotContains('total_sheet_differs', collect($report['issues'])->pluck('code')->all());
+
+        $this->getJson('/api/v1/dashboard?institution=rowad&year=2025')
+            ->assertOk()
+            ->assertJsonPath('data.summary.total', 18)
+            ->assertJsonPath('data.periods.0.key', '2025-00')
+            ->assertJsonPath('data.periods.0.label', 'تقرير السنة 2025');
+        $this->getJson('/api/v1/dashboard?institution=rowad&from=2025-01&to=2025-12')
+            ->assertOk()
+            ->assertJsonPath('data.has_data', false);
     }
 
     public function test_unlisted_and_lock_files_are_not_imported(): void

@@ -41,7 +41,13 @@ class Period extends Model
         return $this->hasMany(ActivityRecord::class);
     }
 
-    /** Stable identifier used in URLs and the API, e.g. "2026-05". */
+    /** A whole-year report (sheet «كل الأشهر»), stored as month 0 rather than a calendar month. */
+    public function isAnnual(): bool
+    {
+        return $this->month === 0;
+    }
+
+    /** Stable identifier used in URLs and the API, e.g. "2026-05". A year report is "2025-00". */
     public function key(): string
     {
         return sprintf('%04d-%02d', $this->year, $this->month);
@@ -49,13 +55,13 @@ class Period extends Model
 
     public function label(): string
     {
-        return self::MONTHS_AR[$this->month].' '.$this->year;
+        return $this->isAnnual() ? 'تقرير السنة '.$this->year : self::MONTHS_AR[$this->month].' '.$this->year;
     }
 
-    /** @return array{0: int, 1: int}|null [year, month] */
+    /** @return array{0: int, 1: int}|null [year, month]; month 0 is a year report */
     public static function parseKey(string $key): ?array
     {
-        if (! preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $key, $m)) {
+        if (! preg_match('/^(\d{4})-(0[0-9]|1[0-2])$/', $key, $m)) {
             return null;
         }
 

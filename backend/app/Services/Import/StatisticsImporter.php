@@ -166,10 +166,10 @@ class StatisticsImporter
             $withValues = count(array_filter($parsed['rows'], fn ($r) => $this->resolver->resolve($r['values'], 'registered_benefits')['status'] !== 'missing'));
             $entry['status'] = 'skipped';
             $entry['reason'] = $config['skip'];
+            // An intentional skip stays out of the quality card. A skip that was supposed to be
+            // empty and now has figures is the only case worth surfacing.
             if (($config['expect_empty'] ?? false) && $withValues > 0) {
                 $this->issue($source, null, null, 'excluded', 'skipped_file_has_values', "«{$relative}» مُستثنى في الإعداد لكنه يحتوي {$withValues} صفًا بقيم؛ راجع الإعداد.", []);
-            } else {
-                $this->issue($source, null, null, 'info', 'skipped_file', "«{$relative}» لم يُستورد: {$config['skip']}".($config['expect_empty'] ?? false ? ' (تحقق: لا يوجد أي صف بقيم مدخلة).' : ''), []);
             }
 
             return;
@@ -200,7 +200,6 @@ class StatisticsImporter
             'unchanged' => 0, 'reactivated' => 0, 'deactivated' => 0, 'total' => 0, 'periods' => [], 'sheets' => count($parsed['sheets'])];
         $occurrences = [];
         $noMonth = ['rows' => 0, 'total' => 0];
-        $future = [];
 
         foreach ($parsed['rows'] as $row) {
             $resolved = $this->resolver->resolve($row['values'], $measure->code);
@@ -242,11 +241,9 @@ class StatisticsImporter
                 }
             }
 
-            // A month that has not happened yet cannot hold real figures (pre-filled template zeros).
+            // A month that has not happened yet is a blank template. It stays out of the figures
+            // and is not listed on the quality card.
             if ($year * 100 + $row['month'] > (int) now()->format('Ym')) {
-                $future[$row['sheet']] = ($future[$row['sheet']] ?? ['rows' => 0, 'total' => 0, 'month' => $row['month'], 'year' => $year]);
-                $future[$row['sheet']]['rows']++;
-                $future[$row['sheet']]['total'] += $values['total_count'];
                 $stats['excluded']++;
 
                 continue;
@@ -301,10 +298,6 @@ class StatisticsImporter
             $stats[$outcome]++;
             $stats['total'] += $values['total_count'];
             $stats['periods'][$period->key()] = true;
-        }
-
-        foreach ($future as $sheet => $f) {
-            $this->issue($source, $sheet, null, 'excluded', 'future_period', "{$f['rows']} صفًا بقيم مدخلة (إجماليها {$f['total']}) لشهر ".Period::MONTHS_AR[$f['month']]." {$f['year']} الذي لم يحن بعد عند الاستيراد؛ لم تُستورد.", $f);
         }
 
         if ($noMonth['rows'] > 0) {

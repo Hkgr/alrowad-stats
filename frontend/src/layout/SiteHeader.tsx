@@ -20,7 +20,7 @@ export function SiteHeader({ periodLabel, search, fullscreen, backdrop, classNam
   return (
     <header className={`relative z-30 border-b border-line bg-white/95 backdrop-blur lg:sticky lg:top-0 ${className}`} style={style}>
       <div className="brand-rule" aria-hidden="true" />
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-2.5 sm:px-6 lg:flex-nowrap lg:px-8">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-2.5 sm:px-6 lg:flex-nowrap lg:px-8">
         <a href="/" className="flex shrink-0 items-center gap-4 rounded-lg" aria-label="إحصاءات الرواد — النظرة العامة">
           <img
             src={logo}

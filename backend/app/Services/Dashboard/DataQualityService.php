@@ -44,6 +44,7 @@ class DataQualityService
         'label_from_total' => 'تسمية استُرجعت من ورقة Total',
         'garbled_header' => 'عنوان عمود مشوّه',
         'total_sheet_has_summary_row' => 'ورقة Total فيها صف ملخص',
+        'total_sheet_row_count' => 'عدد صفوف ورقة Total يختلف عن الورقة الشهرية',
         'skipped_file' => 'ملف متجاوَز عمدًا',
     ];
 
@@ -109,13 +110,16 @@ class DataQualityService
             return [];
         }
 
-        $calendar = Period::whereIn('id', $byProject->flatten(1)->pluck('period_id')->unique())->orderBy('year')->orderBy('month')->get()->values();
+        $calendar = Period::whereIn('id', $byProject->flatten(1)->pluck('period_id')->unique())->where('month', '>', 0)->orderBy('year')->orderBy('month')->get()->values();
         $index = $calendar->pluck('id')->flip();
         $projects = Project::whereIn('id', $byProject->keys())->get()->keyBy('id');
 
         $out = [];
         foreach ($byProject as $projectId => $rows) {
-            $present = $rows->pluck('period_id')->map(fn ($id) => $index[$id])->sort()->values();
+            $present = $rows->pluck('period_id')->filter(fn ($id) => isset($index[$id]))->map(fn ($id) => $index[$id])->sort()->values();
+            if ($present->isEmpty()) {
+                continue;
+            }
             $first = $present->first();
             $last = $present->last();
             $missing = $calendar->filter(fn (Period $p, $i) => $i > $first && $i < $last && ! $present->contains($i));

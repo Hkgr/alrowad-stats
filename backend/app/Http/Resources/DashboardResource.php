@@ -163,7 +163,7 @@ class DashboardResource extends JsonResource
         }
 
         // Months of the scope with figures (period filter ignored, so the selection stays comparable).
-        $months = array_values(array_filter($data->periods, fn ($row) => $row['figures']->total > 0));
+        $months = array_values(array_filter($data->periods, fn ($row) => $row['period']->month > 0 && $row['figures']->total > 0));
         $monthsTotal = array_sum(array_map(fn ($row) => $row['figures']->total, $months));
         $peak = null;
         foreach ($months as $row) {

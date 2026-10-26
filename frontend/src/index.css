@@ -151,6 +151,11 @@
     animation-play-state: running;
   }
 
+  .filter-rail {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
   .scrollbar-none {
     scrollbar-width: none;
   }

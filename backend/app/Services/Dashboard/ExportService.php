@@ -57,7 +57,7 @@ class ExportService
     {
         $table = [self::HEADER];
         foreach ($this->rows($f) as $r) {
-            $table[] = [$r['year'], Period::MONTHS_AR[$r['month']], $r['sector'], $r['project'], $r['region'], $r['office'], $r['main'], $r['sub'], $r['male'], $r['female'], $r['unreported'], $r['total']];
+            $table[] = [$r['year'], $r['month'] === 0 ? 'تقرير السنة' : Period::MONTHS_AR[$r['month']], $r['sector'], $r['project'], $r['region'], $r['office'], $r['main'], $r['sub'], $r['male'], $r['female'], $r['unreported'], $r['total']];
         }
 
         return $table;
@@ -130,7 +130,7 @@ class ExportService
     {
         [$year, $month] = Period::parseKey($key);
 
-        return Period::MONTHS_AR[$month].' '.$year;
+        return $month === 0 ? 'تقرير السنة '.$year : Period::MONTHS_AR[$month].' '.$year;
     }
 
     /**
