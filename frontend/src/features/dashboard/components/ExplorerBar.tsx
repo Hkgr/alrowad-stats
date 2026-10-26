@@ -1,10 +1,10 @@
-import { ChevronLeft, RotateCcw, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, RotateCcw, SlidersHorizontal, X } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { SelectField, type SelectOption } from '../../../components/ui/SelectField'
 import { rangeLabel } from '../../../lib/format'
 import { parseOffices, selectionChips } from '../../../lib/regions'
 import type { Dashboard, FilterOptions, FilterState } from '../../../types/api'
 import { RegionPicker } from './RegionPicker'
-import { ShareExportBar } from './ShareExportBar'
 
 interface Props {
   filters: FilterState
@@ -33,11 +33,7 @@ function withCurrent(list: SelectOption[], current: { value: string; label: stri
   return current && !list.some((o) => o.value === current.value) ? [...list, current] : list
 }
 
-/**
- * Where am I + what is applied: breadcrumb (overview › track › project › main › sub activity),
- * the small filters (period, region/offices, main activity, sub activity), removable chips and one reset.
- */
-export function ExplorerBar(props: Props) {
+function useExplorer(props: Props) {
   const { filters, dashboard, options, hasActiveFilters, busy } = props
   const sector = dashboard?.active_sector ?? dashboard?.filters.sector ?? null
   const project = dashboard?.filters.project ?? null
@@ -47,6 +43,20 @@ export function ExplorerBar(props: Props) {
   const offices = parseOffices(filters.office)
   const officeNames = Object.fromEntries((dashboard?.filters.offices ?? []).map((o) => [o.slug, o.name]))
   const { gender, age, disabled } = filters
+  const sectorHasData = new Map((dashboard?.sectors ?? []).map((row) => [row.slug, row.has_data]))
+  const sectorOptions = withCurrent(
+    (options?.sectors ?? []).map((row) => ({
+      value: row.slug,
+      label: sectorHasData.get(row.slug) === false ? `${row.name} (لا بيانات)` : row.name,
+    })),
+    sector && { value: sector.slug, label: sector.name },
+  )
+  const projectOptions = withCurrent(
+    (options?.projects ?? [])
+      .filter((row) => !filters.sector || row.sector?.slug === filters.sector)
+      .map((row) => ({ value: row.slug, label: row.has_data ? row.name : `${row.name} (لا بيانات)` })),
+    project && { value: project.slug, label: project.name },
+  )
   const from = dashboard?.filters.from ?? null
   const to = dashboard?.filters.to ?? null
 
@@ -55,7 +65,6 @@ export function ExplorerBar(props: Props) {
     (options?.years ?? []).map((y) => ({ value: String(y), label: String(y) })),
     filters.year ? { value: filters.year, label: filters.year } : null,
   )
-  // Same month list for the range ends and the single month (it ignores the range itself).
   const fromOptions = withCurrent(periodOptions, from && { value: from.key, label: from.label })
   const toOptions = withCurrent(periodOptions, to && { value: to.key, label: to.label })
   const mainOptions = withCurrent(
@@ -67,8 +76,6 @@ export function ExplorerBar(props: Props) {
     sub && { value: sub.slug, label: sub.name },
   )
 
-  const crumb = 'inline-flex min-h-9 cursor-pointer items-center rounded-lg px-2 text-sm font-semibold text-ink-soft hover:bg-paper-deep hover:text-ink'
-  const current = 'truncate px-2 text-sm font-extrabold text-ink'
   const trail: { key: string; label: string; go?: () => void }[] = [
     { key: 'overview', label: 'النظرة العامة', go: props.onOverview },
   ]
@@ -92,143 +99,236 @@ export function ExplorerBar(props: Props) {
   if (age) chips.push({ key: 'age', label: AGE_LABEL[age] ?? age, onRemove: () => props.onFilters({ age: null }) })
   if (disabled) chips.push({ key: 'disabled', label: 'ذوو الاحتياجات الخاصة', onRemove: () => props.onFilters({ disabled: null }) })
 
+  return {
+    filters, options, hasActiveFilters, busy, project, main, period, offices, officeNames, gender, age, disabled,
+    periodOptions, yearOptions, fromOptions, toOptions, sectorOptions, projectOptions, mainOptions, subOptions, trail, chips,
+  }
+}
+
+/** Where am I: overview › track › project › main › sub activity. Lives above the figures, not inside the filter rail. */
+export function ScopeTrail(props: Props) {
+  const { trail } = useExplorer(props)
+  const crumb = 'inline-flex min-h-9 cursor-pointer items-center rounded-lg px-2 text-sm font-semibold text-ink-soft hover:bg-white hover:text-ink'
+  const current = 'truncate px-2 text-sm font-extrabold text-ink'
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-      <nav aria-label="مسار التصفح" className="min-w-0">
-        <ol className="flex flex-wrap items-center gap-0.5">
-          {trail.map((item, index) => {
-            const last = index === trail.length - 1
-            return (
-              <li key={item.key} className="flex min-w-0 items-center gap-0.5">
-                {index > 0 && <ChevronLeft className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />}
-                {last || !item.go ? (
-                  <span aria-current="page" className={`${current} max-w-[18rem]`}>
-                    {item.label}
-                  </span>
-                ) : (
-                  <button type="button" onClick={item.go} className={`${crumb} max-w-[16rem] truncate`}>
-                    {item.label}
-                  </button>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </nav>
-      <ShareExportBar filters={filters} />
-      </div>
+    <nav aria-label="مسار التصفح" className="min-w-0">
+      <ol className="flex flex-wrap items-center gap-0.5">
+        {trail.map((item, index) => {
+          const last = index === trail.length - 1
+          return (
+            <li key={item.key} className="flex min-w-0 items-center gap-0.5">
+              {index > 0 && <ChevronLeft className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />}
+              {last || !item.go ? (
+                <span aria-current="page" className={`${current} max-w-[18rem]`}>
+                  {item.label}
+                </span>
+              ) : (
+                <button type="button" onClick={item.go} className={`${crumb} max-w-[16rem] truncate`}>
+                  {item.label}
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+    </nav>
+  )
+}
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4" role="group" aria-label="الفلاتر">
-        <SelectField label="الفترة" value={filters.period ?? ''} options={periodOptions} allLabel="كل الفترات" onChange={(v) => props.onPeriod(v || null)} />
-        <RegionPicker regions={options?.regions ?? []} selected={offices} names={officeNames} onChange={props.onOffices} />
-        <SelectField
-          label="النشاط الرئيسي"
-          value={filters.main_activity ?? ''}
-          options={mainOptions}
-          allLabel={project ? (mainOptions.length ? 'كل الأنشطة الرئيسية' : 'لا تتوفر في المصدر') : 'بعد اختيار مشروع'}
-          disabled={!project || mainOptions.length === 0}
-          onChange={(v) => props.onMainActivity(v || null)}
-        />
-        <SelectField
-          label="النشاط الفرعي"
-          value={filters.sub_activity ?? ''}
-          options={subOptions}
-          allLabel={main ? (subOptions.length ? 'كل الأنشطة الفرعية' : 'لا تتوفر في المصدر') : 'بعد اختيار نشاط رئيسي'}
-          disabled={!main || subOptions.length === 0}
-          onChange={(v) => props.onSubActivity(v || null)}
-        />
-      </div>
+function FilterGroup({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return (
+    <section
+      className="rounded-2xl border border-line border-s-[3px] bg-white p-2.5 shadow-card"
+      style={{ borderInlineStartColor: 'var(--t-primary)' }}
+    >
+      <header className="mb-2">
+        <h2 className="text-sm font-extrabold text-ink">{title}</h2>
+        <p className="text-xs leading-5 text-ink-muted">{hint}</p>
+      </header>
+      <div className="space-y-2">{children}</div>
+    </section>
+  )
+}
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6" role="group" aria-label="فلاتر الفئة">
-        {/* A period outside the chosen year can no longer be selected, so it is dropped with the change. */}
-        <SelectField
-          label="السنة"
-          value={filters.year ?? ''}
-          options={yearOptions}
-          allLabel="كل السنوات"
-          onChange={(v) =>
-            props.onFilters({
-              year: v || null,
-              ...(v && filters.period && !filters.period.startsWith(v) ? { period: null } : {}),
-              ...(v && filters.from && !filters.from.startsWith(v) ? { from: null } : {}),
-              ...(v && filters.to && !filters.to.startsWith(v) ? { to: null } : {}),
-            })
-          }
-        />
-        {/* A range replaces the single month; an end that would cross the other end clears that other end. */}
-        <SelectField
-          label="من شهر"
-          value={filters.from ?? ''}
-          options={fromOptions}
-          allLabel="من أول شهر"
-          onChange={(v) => props.onFilters({ from: v || null, period: null, ...(v && filters.to && v > filters.to ? { to: null } : {}) })}
-        />
-        <SelectField
-          label="إلى شهر"
-          value={filters.to ?? ''}
-          options={toOptions}
-          allLabel="إلى آخر شهر"
-          onChange={(v) => props.onFilters({ to: v || null, period: null, ...(v && filters.from && v < filters.from ? { from: null } : {}) })}
-        />
-        <SelectField
-          label="الجنس"
-          value={gender ?? ''}
-          options={Object.entries(GENDER_LABEL).map(([value, label]) => ({ value, label }))}
-          allLabel="الكل"
-          disabled={Boolean(disabled)}
-          onChange={(v) => props.onFilters({ gender: v || null })}
-        />
-        <SelectField
-          label="العمر"
-          value={age ?? ''}
-          options={Object.entries(AGE_LABEL).map(([value, label]) => ({ value, label }))}
-          allLabel="كل الأعمار"
-          disabled={Boolean(disabled)}
-          onChange={(v) => props.onFilters({ age: v || null })}
-        />
-        <SelectField
-          label="ذوو الاحتياجات"
-          value={disabled ?? ''}
-          options={[{ value: '1', label: 'المسجَّلون فقط' }]}
-          allLabel="الكل"
-          disabled={Boolean(gender || age)}
-          onChange={(v) => props.onFilters({ disabled: v || null })}
-        />
-      </div>
+/**
+ * Filters as a right-hand rail (the page is RTL, so this column is first).
+ * Three bars: time, place and activity, then the demographic slice.
+ * On a narrow screen the same bars collapse behind one button so the figures stay first.
+ */
+export function FilterRail(props: Props) {
+  const model = useExplorer(props)
+  const { filters, hasActiveFilters, busy, project, main, offices, officeNames, gender, age, disabled } = model
+  const [open, setOpen] = useState(false)
 
-      {(chips.length > 0 || busy) && (
-        <div className="flex flex-wrap items-center gap-2" aria-live="polite">
-          {chips.map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex max-w-full items-center gap-1 rounded-full border bg-white py-0.5 ps-3 pe-0.5 text-sm font-semibold text-ink"
-              style={{ borderColor: 'color-mix(in srgb, var(--t-primary) 45%, transparent)' }}
-            >
-              <span className="truncate">{chip.label}</span>
-              <button
-                type="button"
-                onClick={chip.onRemove}
-                aria-label={`إزالة: ${chip.label}`}
-                className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-ink-soft hover:bg-paper-deep hover:text-ink"
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
+  return (
+    <aside aria-label="التصفية">
+      <button
+        type="button"
+        className="flex w-full cursor-pointer items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2.5 text-start shadow-card lg:hidden"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <SlidersHorizontal className="size-4 text-brand-ink" aria-hidden="true" />
+        <span className="font-extrabold text-ink">التصفية</span>
+        {model.chips.length > 0 && (
+          <span className="num rounded-full bg-brand-soft px-2 py-0.5 text-xs font-bold text-brand-ink">{model.chips.length}</span>
+        )}
+        <ChevronDown className={`ms-auto size-4 text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+
+      <div className={`${open ? 'mt-3' : 'hidden'} space-y-3 lg:mt-0 lg:block`}>
+        <div className="flex items-center justify-between gap-2 px-1">
+          <h2 className="hidden text-sm font-extrabold text-ink lg:block">
+            التصفية
+            {model.chips.length > 0 && <span className="num ms-1.5 text-ink-muted">{model.chips.length}</span>}
+          </h2>
+          {busy && <span className="text-xs font-semibold text-ink-muted">جارٍ التحديث…</span>}
           {hasActiveFilters && (
             <button
               type="button"
               onClick={props.onReset}
-              className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm font-bold text-brand-ink hover:bg-brand-soft"
+              className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-sm font-bold text-brand-ink hover:bg-brand-soft"
             >
               <RotateCcw className="size-3.5" aria-hidden="true" />
               إعادة الضبط
             </button>
           )}
-          {busy && <span className="text-xs font-semibold text-ink-muted">جارٍ التحديث…</span>}
         </div>
-      )}
-    </div>
+
+        {model.chips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5" aria-live="polite">
+            {model.chips.map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex max-w-full items-center gap-1 rounded-full border bg-white py-0.5 ps-2.5 pe-0.5 text-xs font-semibold text-ink"
+                style={{ borderColor: 'color-mix(in srgb, var(--t-primary) 45%, transparent)' }}
+              >
+                <span className="truncate">{chip.label}</span>
+                <button
+                  type="button"
+                  onClick={chip.onRemove}
+                  aria-label={`إزالة: ${chip.label}`}
+                  className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-full text-ink-soft hover:bg-paper-deep hover:text-ink"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <FilterGroup title="الوقت" hint="سنة، أو شهر واحد، أو مجال من شهر إلى شهر">
+          <div className="grid grid-cols-2 gap-2">
+            <SelectField
+              variant="bar"
+              label="السنة"
+              value={filters.year ?? ''}
+              options={model.yearOptions}
+              allLabel="كل السنوات"
+              onChange={(v) =>
+                props.onFilters({
+                  year: v || null,
+                  ...(v && filters.period && !filters.period.startsWith(v) ? { period: null } : {}),
+                  ...(v && filters.from && !filters.from.startsWith(v) ? { from: null } : {}),
+                  ...(v && filters.to && !filters.to.startsWith(v) ? { to: null } : {}),
+                })
+              }
+            />
+            <SelectField variant="bar" label="شهر واحد" value={filters.period ?? ''} options={model.periodOptions} allLabel="كل الشهور" onChange={(v) => props.onPeriod(v || null)} />
+            <SelectField
+              variant="bar"
+              label="من شهر"
+              value={filters.from ?? ''}
+              options={model.fromOptions}
+              allLabel="من أول شهر"
+              onChange={(v) => props.onFilters({ from: v || null, period: null, ...(v && filters.to && v > filters.to ? { to: null } : {}) })}
+            />
+            <SelectField
+              variant="bar"
+              label="إلى شهر"
+              value={filters.to ?? ''}
+              options={model.toOptions}
+              allLabel="إلى آخر شهر"
+              onChange={(v) => props.onFilters({ to: v || null, period: null, ...(v && filters.from && v < filters.from ? { from: null } : {}) })}
+            />
+          </div>
+        </FilterGroup>
+
+        <FilterGroup title="المكان والنشاط" hint="المسار والمشروع، ثم النشاط بعد اختيار مشروع">
+          <SelectField
+            variant="bar"
+            label="المسار"
+            value={filters.sector ?? ''}
+            options={model.sectorOptions}
+            allLabel="كل المسارات"
+            onChange={(v) => props.onSector(v || null)}
+          />
+          <SelectField
+            variant="bar"
+            label="المشروع"
+            value={filters.project ?? ''}
+            options={model.projectOptions}
+            allLabel={filters.sector ? 'كل مشاريع المسار' : 'كل المشاريع'}
+            disabled={model.projectOptions.length === 0}
+            onChange={(v) => {
+              const chosen = props.options?.projects.find((row) => row.slug === v)
+              props.onProject(v || null, chosen?.sector?.slug ?? filters.sector)
+            }}
+          />
+          <RegionPicker variant="bar" regions={model.options?.regions ?? []} selected={offices} names={officeNames} onChange={props.onOffices} />
+          <SelectField
+            variant="bar"
+            label="النشاط الرئيسي"
+            value={filters.main_activity ?? ''}
+            options={model.mainOptions}
+            allLabel={project ? (model.mainOptions.length ? 'كل الأنشطة الرئيسية' : 'لا تتوفر في المصدر') : 'بعد اختيار مشروع'}
+            disabled={!project || model.mainOptions.length === 0}
+            onChange={(v) => props.onMainActivity(v || null)}
+          />
+          <SelectField
+            variant="bar"
+            label="النشاط الفرعي"
+            value={filters.sub_activity ?? ''}
+            options={model.subOptions}
+            allLabel={main ? (model.subOptions.length ? 'كل الأنشطة الفرعية' : 'لا تتوفر في المصدر') : 'بعد اختيار نشاط رئيسي'}
+            disabled={!main || model.subOptions.length === 0}
+            onChange={(v) => props.onSubActivity(v || null)}
+          />
+        </FilterGroup>
+
+        <FilterGroup title="الفئة" hint="ذوو الاحتياجات لا يُجمعون مع الجنس أو العمر">
+          <div className="grid grid-cols-2 gap-2">
+            <SelectField
+              variant="bar"
+              label="الجنس"
+              value={gender ?? ''}
+              options={Object.entries(GENDER_LABEL).map(([value, label]) => ({ value, label }))}
+              allLabel="الكل"
+              disabled={Boolean(disabled)}
+              onChange={(v) => props.onFilters({ gender: v || null })}
+            />
+            <SelectField
+              variant="bar"
+              label="العمر"
+              value={age ?? ''}
+              options={Object.entries(AGE_LABEL).map(([value, label]) => ({ value, label }))}
+              allLabel="كل الأعمار"
+              disabled={Boolean(disabled)}
+              onChange={(v) => props.onFilters({ age: v || null })}
+            />
+          </div>
+          <SelectField
+            variant="bar"
+            label="ذوو الاحتياجات"
+            value={disabled ?? ''}
+            options={[{ value: '1', label: 'المسجَّلون فقط' }]}
+            allLabel="الكل"
+            disabled={Boolean(gender || age)}
+            onChange={(v) => props.onFilters({ disabled: v || null })}
+          />
+        </FilterGroup>
+      </div>
+    </aside>
   )
 }

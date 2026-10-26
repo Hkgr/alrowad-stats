@@ -44,9 +44,10 @@ function describeFilters(data: Dashboard): string[] {
 
 function periodText(data: Dashboard): string {
   if (data.filters.period) return data.filters.period.label
-  const withData = data.periods.filter((p) => p.has_data)
-  if (withData.length === 0) return 'كل الفترات'
-  return withData.length === 1 ? withData[0].label : `${withData[0].label} – ${withData[withData.length - 1].label}`
+  const months = data.periods.filter((p) => p.has_data && p.month > 0)
+  const annual = data.periods.find((p) => p.has_data && p.month === 0)
+  if (months.length === 0) return annual?.label ?? 'كل الفترات'
+  return months.length === 1 ? months[0].label : `${months[0].label} – ${months[months.length - 1].label}`
 }
 
 function Box({ label, value, caption }: { label: string; value: string; caption?: string }) {
@@ -134,7 +135,7 @@ export function ReportPage() {
 function ReportBody({ data, theme, today }: { data: Dashboard; theme: ReturnType<typeof scopeTheme>; today: string }) {
   const { summary, insights } = data
   const filters = describeFilters(data)
-  const withData = data.periods.filter((p) => p.has_data)
+  const withData = data.periods.filter((p) => p.has_data && p.month > 0)
   const detail = detailRows(data)
   const ages = insights.ages
 

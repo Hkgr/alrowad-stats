@@ -64,8 +64,9 @@ class StatisticsSheetParser
                 continue;
             }
 
+            $annual = $this->isAnnualSheet($sheet);
             $sheetMonth = in_array('month', $header, true) ? null : $this->monthFromSheetName($sheet);
-            if ($sheetMonth === null && ! in_array('month', $header, true)) {
+            if (! $annual && $sheetMonth === null && ! in_array('month', $header, true)) {
                 $withValues = array_filter($this->readRows($data, $header, $sheet, flat: false), fn ($r) => isset($r['values']) && ($r['values']['total']['value'] ?? 0) > 0);
                 $sum = array_sum(array_map(fn ($r) => $r['values']['total']['value'], $withValues));
                 $this->issue('excluded', 'sheet_without_month', "الورقة «{$sheet}» بلا شهر في اسمها ولا عمود «الشهر» ولا تاريخ (".count($withValues)." صفًا بقيم، مجموع «العدد الكامل» {$sum})؛ الفترة غير محسومة فلم تُستورد.", $sheet, null, ['rows' => count($withValues), 'total' => $sum]);
@@ -90,14 +91,15 @@ class StatisticsSheetParser
 
                     continue;
                 }
-                $row['month'] = $sheetMonth ?? $this->monthOf($row['text']['month']);
-                if ($sheetMonth !== null && $row['text']['month'] !== null && $this->monthOf($row['text']['month']) !== $sheetMonth) {
+                // A whole-year sheet («كل الأشهر») is one report for the file's year, not a month.
+                $row['month'] = $annual ? 0 : ($sheetMonth ?? $this->monthOf($row['text']['month']));
+                if (! $annual && $sheetMonth !== null && $row['text']['month'] !== null && $this->monthOf($row['text']['month']) !== $sheetMonth) {
                     $this->issue('info', 'month_column_differs', 'الشهر في الصف يخالف اسم الورقة؛ اعتُمد عمود «الشهر».', $sheet, $row['row']);
                     $row['month'] = $this->monthOf($row['text']['month']);
                 }
                 $row['year'] = $year;
-                $row['year_unresolved'] = $sheetWrapped;
-                $row['from_monthly_sheet'] = $sheetMonth !== null;
+                $row['year_unresolved'] = $annual ? false : $sheetWrapped;
+                $row['from_monthly_sheet'] = ! $annual && $sheetMonth !== null;
                 $rows[] = $row;
             }
         }
@@ -240,6 +242,8 @@ class StatisticsSheetParser
             }
         }
 
+        // The monthly sheet is the record. A differing Total row is ignored, not reported:
+        // the institution treats the month sheet as the source and the Total sheet as a copy.
         $monthly = [];
         foreach ($rows as $i => $row) {
             if ($row['from_monthly_sheet']) {
@@ -247,12 +251,11 @@ class StatisticsSheetParser
             }
         }
 
-        $differences = 0;
         foreach ($monthly as $month => $indexes) {
             $totals = $byMonth[$month] ?? [];
+            // A different row count means the Total sheet cannot be lined up with the month.
+            // The month sheet stays the record and the mismatch is not reported.
             if (count($totals) !== count($indexes)) {
-                $this->issue('info', 'total_sheet_row_count', "شهر {$month}: عدد صفوف Total (".count($totals).') يختلف عن الورقة الشهرية ('.count($indexes).')؛ لم تُستخدم للمطابقة.', null);
-
                 continue;
             }
 
@@ -270,15 +273,8 @@ class StatisticsSheetParser
                         }
                     }
                 }
-                if (! $same) {
-                    $differences++;
-                }
                 unset($row);
             }
-        }
-
-        if ($differences > 0) {
-            $this->issue('info', 'total_sheet_differs', "{$differences} صفًا تختلف أرقامها بين الورقة الشهرية وورقة Total؛ اعتُمدت الورقة الشهرية.", null);
         }
     }
 
@@ -328,6 +324,19 @@ class StatisticsSheetParser
         }
 
         return $map;
+    }
+
+    /** A sheet that states the whole year («كل الأشهر») rather than one month. */
+    private function isAnnualSheet(string $sheet): bool
+    {
+        $name = ArabicName::normalize($sheet);
+        foreach (['كل الاشهر', 'كل الشهور', 'تقرير سنوي', 'تقرير السنه'] as $label) {
+            if ($name === $label || str_ends_with($name, '-'.$label) || str_ends_with($name, ' '.$label)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function monthFromSheetName(string $sheet): ?int

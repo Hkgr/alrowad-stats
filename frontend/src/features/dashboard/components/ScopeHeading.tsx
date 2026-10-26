@@ -31,9 +31,10 @@ export function ScopeHeading({ dashboard, theme, onBack, backLabel }: Props) {
         : level === 'project' ? filters.project?.name
           : level === 'sector' ? sector?.name
             : 'كل المسارات'
-  const withData = periods.filter((p) => p.has_data)
+  const months = periods.filter((p) => p.has_data && p.month > 0)
+  const annual = periods.find((p) => p.has_data && p.month === 0)
   const periodText = filters.period?.label
-    ?? (withData.length > 1 ? `${withData[0].label} – ${withData[withData.length - 1].label}` : withData[0]?.label ?? null)
+    ?? (months.length > 1 ? `${months[0].label} – ${months[months.length - 1].label}` : months[0]?.label ?? annual?.label ?? null)
   const context = [
     level !== 'sector' && level !== 'overview' ? sector?.name : null,
     level === 'main_activity' || level === 'sub_activity' ? filters.project?.name : null,

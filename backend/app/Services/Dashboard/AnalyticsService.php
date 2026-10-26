@@ -99,6 +99,7 @@ class AnalyticsService
         $column = $bySector ? 'psa.sector_id' : 'activity_records.project_id';
 
         $rows = $this->dashboard->records($f, $measure, period: false)
+            ->where('periods.month', '>', 0)
             ->groupBy('activity_records.period_id', $column)
             ->selectRaw("activity_records.period_id AS period_id, {$column} AS group_key, SUM({$slice['total']}) AS total")
             ->toBase()->get();

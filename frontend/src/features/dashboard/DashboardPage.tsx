@@ -15,7 +15,8 @@ import type { BreakdownView, Dashboard, FilterState } from '../../types/api'
 import { ActivitiesPanel } from './components/ActivitiesPanel'
 import { AnalyticsSection } from './components/AnalyticsSection'
 import { DataQualityCard } from './components/DataQualityCard'
-import { ExplorerBar } from './components/ExplorerBar'
+import { FilterRail, ScopeTrail } from './components/ExplorerBar'
+import { ShareExportBar } from './components/ShareExportBar'
 import { FiguresBand, FiguresBandSkeleton } from './components/FiguresBand'
 import { InsightsPanel } from './components/InsightsPanel'
 import { OfficesTable } from './components/OfficesTable'
@@ -92,6 +93,23 @@ export function DashboardPage() {
 
   const failure = institutions.error ?? dashboard.error
   const loadingFirst = institutions.isPending || (Boolean(filters.institution) && dashboard.isPending)
+  const explorer = {
+    filters,
+    dashboard: data,
+    options: options.data,
+    onOverview: nav.goOverview,
+    onSector: nav.goSector,
+    onProject: nav.goProject,
+    onMainActivity: nav.goMainActivity,
+    onSubActivity: nav.goSubActivity,
+    onPeriod: nav.setPeriod,
+    onOffices: nav.setOffices,
+    onFilters: update,
+    onReset: nav.reset,
+    hasActiveFilters,
+    busy: refreshing,
+  }
+  const trailIntro = introProps(intro, 1)
 
   return (
     <div
@@ -121,24 +139,21 @@ export function DashboardPage() {
           }
         />
 
-        <main id="content" tabIndex={-1} className="mx-auto w-full max-w-[1440px] space-y-5 px-4 pb-16 pt-5 outline-none sm:px-6 lg:px-8">
-          <div {...introProps(intro, 1)}>
-            <ExplorerBar
-              filters={filters}
-              dashboard={data}
-              options={options.data}
-              onOverview={nav.goOverview}
-              onSector={nav.goSector}
-              onProject={nav.goProject}
-              onMainActivity={nav.goMainActivity}
-              onSubActivity={nav.goSubActivity}
-              onPeriod={nav.setPeriod}
-              onOffices={nav.setOffices}
-              onFilters={update}
-              onReset={nav.reset}
-              hasActiveFilters={hasActiveFilters}
-              busy={refreshing}
-            />
+        <main
+          id="content"
+          tabIndex={-1}
+          className="mx-auto grid w-full max-w-[1600px] items-start gap-5 px-4 pb-16 pt-5 outline-none sm:px-6 lg:grid-cols-[18.75rem_minmax(0,1fr)] lg:gap-6 lg:px-8"
+        >
+          <div className="filter-rail sticky top-0 z-20 max-h-[calc(100dvh-0.75rem)] self-start overflow-y-auto bg-paper/95 backdrop-blur-md lg:top-[6.5rem] lg:max-h-[calc(100dvh-7.25rem)] lg:bg-transparent lg:backdrop-blur-none">
+            <div {...trailIntro}>
+              <FilterRail {...explorer} />
+            </div>
+          </div>
+
+          <div className="min-w-0 space-y-5">
+          <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${trailIntro.className}`} style={trailIntro.style}>
+            <ScopeTrail {...explorer} />
+            <ShareExportBar filters={filters} />
           </div>
 
           {data?.demographic && (
@@ -186,6 +201,7 @@ export function DashboardPage() {
               </div>
             </div>
           )}
+          </div>
         </main>
       </div>
     </div>
@@ -217,7 +233,7 @@ function LevelContent({ data, filters, intro, view, nav, theme }: LevelProps) {
   }[level]
 
   const sectorsWithData = data.sectors.filter((s) => s.has_data)
-  const periodsWithData = data.periods.filter((p) => p.has_data)
+  const periodsWithData = data.periods.filter((p) => p.has_data && p.month > 0)
   const panel: BreakdownView = inProject ? 'offices' : view
   const charts = introProps(intro, 3)
 

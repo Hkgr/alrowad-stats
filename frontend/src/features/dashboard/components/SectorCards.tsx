@@ -47,9 +47,7 @@ export function SectorCards({ sectors, unclassified, onSelect }: Props) {
     <section aria-label="المسارات">
       <ul
         ref={listRef}
-        className={`scrollbar-none -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3 ${
-          cards.length > 5 ? 'xl:grid-cols-6' : 'xl:grid-cols-5'
-        }`}
+        className="scrollbar-none -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-3"
       >
         {cards.map((card) => {
           const { theme } = card

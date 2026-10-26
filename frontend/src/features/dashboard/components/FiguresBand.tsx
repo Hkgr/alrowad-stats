@@ -44,8 +44,8 @@ function Figure({ label, value, caption, accent, icon: Icon, featured }: FigureP
 
 export function FiguresBand({ summary }: { summary: Summary }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-      <div className="col-span-2 lg:col-span-1">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="col-span-2 xl:col-span-1">
         <Figure
           featured
           label="الاستفادات المسجلة"
@@ -69,7 +69,7 @@ export function FiguresBand({ summary }: { summary: Summary }) {
         accent="#8f4bc9"
         icon={Venus}
       />
-      <div className="col-span-2 lg:col-span-1">
+      <div className="col-span-2 xl:col-span-1">
         <Figure label="المكاتب / المناطق" value={summary.offices_count} caption="لديها سجلات" accent="var(--t-dark)" icon={Building2} />
       </div>
     </div>
@@ -78,9 +78,9 @@ export function FiguresBand({ summary }: { summary: Summary }) {
 
 export function FiguresBandSkeleton() {
   return (
-    <div aria-hidden="true" className="grid grid-cols-2 gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <div aria-hidden="true" className="grid grid-cols-2 gap-3 xl:grid-cols-[1.4fr_1fr_1fr_1fr]">
       {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className={`rounded-2xl border border-line bg-white p-5 ${i === 0 ? 'col-span-2 lg:col-span-1' : ''}`}>
+        <div key={i} className={`rounded-2xl border border-line bg-white p-5 ${i === 0 || i === 3 ? 'col-span-2 xl:col-span-1' : ''}`}>
           <Skeleton className="h-4 w-24" />
           <Skeleton className="mt-3 h-10 w-32" />
           <Skeleton className="mt-3 h-4 w-28" />

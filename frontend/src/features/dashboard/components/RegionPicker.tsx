@@ -11,6 +11,8 @@ interface Props {
   /** Names of chosen offices the options may not list (kept readable). */
   names?: Record<string, string>
   onChange: (slugs: string[]) => void
+  /** `bar` puts the label above a full-width control, for a narrow rail. */
+  variant?: 'inline' | 'bar'
 }
 
 /** A checkbox that can show "some of the group is chosen". */
@@ -28,11 +30,14 @@ function Check({ checked, partial, onChange, label }: { checked: boolean; partia
  * offices below it can be picked one by one. Next to each region: how many offices it has — or the
  * note that it has none (its single choice then stands for the region itself).
  */
-export function RegionPicker({ regions, selected, names, onChange }: Props) {
+export function RegionPicker({ regions, selected, names, onChange, variant = 'inline' }: Props) {
   const [open, setOpen] = useState(false)
+  const [box, setBox] = useState<{ top: number; right: number; width: number; maxHeight: number } | null>(null)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const panelId = useId()
+  const buttonId = useId()
+  const bar = variant === 'bar'
   const chosen = new Set(selected)
   const chips = selectionChips(regions, selected, names)
   const active = selected.length > 0
@@ -57,6 +62,34 @@ export function RegionPicker({ regions, selected, names, onChange }: Props) {
     }
   }, [open])
 
+  // Fixed, so the menu is not clipped by the scrolling filter rail.
+  useEffect(() => {
+    if (!open) return
+    const place = () => {
+      const rect = trigger.current?.getBoundingClientRect()
+      if (!rect) return
+      const below = window.innerHeight - rect.bottom - 12
+      const above = rect.top - 12
+      const openUp = below < 220 && above > below
+      const maxHeight = Math.max(160, Math.min(384, openUp ? above : below))
+      const right = Math.max(8, window.innerWidth - rect.right)
+      const width = Math.min(360, Math.max(rect.width, 260), window.innerWidth - right - 8)
+      const top = openUp ? Math.max(8, rect.top - maxHeight - 4) : rect.bottom + 4
+      setBox((prev) =>
+        prev && Math.abs(prev.top - top) < 1 && Math.abs(prev.right - right) < 1 && Math.abs(prev.width - width) < 1 && prev.maxHeight === maxHeight
+          ? prev
+          : { top, right, width, maxHeight },
+      )
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
+
   const toggleOffice = (slug: string) => onChange(chosen.has(slug) ? selected.filter((s) => s !== slug) : [...selected, slug])
 
   const toggleRegion = (region: RegionOption) => {
@@ -69,29 +102,36 @@ export function RegionPicker({ regions, selected, names, onChange }: Props) {
     chips.length === 0 ? 'كل المناطق' : chips.length <= 2 ? chips.map((c) => c.label).join('، ') : `${formatNumber(selected.length)} مختارة`
 
   return (
-    <div ref={root} className="relative">
+    <div ref={root} className="relative min-w-0">
+      {bar && (
+        <label htmlFor={buttonId} className="mb-1 block text-xs font-bold text-ink-soft">
+          المنطقة
+        </label>
+      )}
       <button
         ref={trigger}
+        id={buttonId}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-10 w-full min-w-0 cursor-pointer items-center rounded-xl border bg-white text-start transition-colors ${
+        className={`relative flex h-10 w-full min-w-0 cursor-pointer items-center rounded-xl border bg-white text-start transition-colors ${
           active ? 'border-brand/60 bg-brand-wash' : 'border-line-strong hover:border-ink-muted'
         }`}
       >
-        <span className="shrink-0 ps-3 text-xs font-bold text-ink-muted">المنطقة</span>
-        <span className="min-w-0 flex-1 truncate ps-2 pe-8 text-sm font-semibold text-ink">{summary}</span>
+        {!bar && <span className="shrink-0 ps-3 text-xs font-bold text-ink-muted">المنطقة</span>}
+        <span className={`min-w-0 flex-1 truncate pe-8 text-sm font-semibold text-ink ${bar ? 'ps-3' : 'ps-2'}`}>{summary}</span>
         <ChevronDown aria-hidden="true" className={`pointer-events-none absolute end-2.5 size-4 text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
+      {open && box && (
         <div
           id={panelId}
           role="group"
           aria-label="اختيار المناطق والمكاتب"
-          className="absolute start-0 top-full z-30 mt-1 max-h-96 w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-line-strong bg-white p-1.5 shadow-card"
+          className="z-40 overflow-y-auto rounded-xl border border-line-strong bg-white p-1.5 shadow-lift"
+          style={{ position: 'fixed', top: box.top, right: box.right, width: box.width, maxHeight: box.maxHeight }}
         >
           <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs text-ink-muted">
             <span>{active ? `${formatNumber(selected.length)} مختارة` : 'لا تصفية: كل المناطق'}</span>

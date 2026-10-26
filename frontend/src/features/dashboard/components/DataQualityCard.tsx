@@ -15,7 +15,7 @@ const SEVERITY_TONE: Record<string, string> = {
 }
 
 function Body({ data }: { data: DataQuality }) {
-  const { issues, gaps, coverage } = data
+  const { issues } = data
 
   return (
     <div className="space-y-6">
@@ -61,38 +61,6 @@ function Body({ data }: { data: DataQuality }) {
         ))}
         {issues.groups.length === 0 && <p className="text-sm text-ink-muted">لا توجد ملاحظات في آخر استيراد.</p>}
       </section>
-
-      <section aria-label="الأشهر الناقصة">
-        <h3 className="mb-2 text-sm font-bold text-ink-soft">أشهر ناقصة داخل مدة المشروع</h3>
-        {gaps.length === 0 ? (
-          <p className="text-sm text-ink-muted">لا يوجد مشروع تنقصه أشهر بين أول شهر له وآخر شهر.</p>
-        ) : (
-          <ul className="space-y-1.5 text-sm">
-            {gaps.map((g) => (
-              <li key={g.slug} className="rounded-xl border border-line bg-white px-3 py-2">
-                <span className="font-bold text-ink">{g.name}</span>
-                <span className="text-ink-muted"> · من {g.first} إلى {g.last} ({formatNumber(g.months_with_data)} شهرًا فيها أرقام)</span>
-                <span className="block text-ink-soft">بلا أرقام: {g.missing.join('، ')}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="mt-2 text-xs text-ink-muted">المقارنة بالأشهر التي فيها أرقام لأي مشروع؛ المشروع الذي يبدأ متأخرًا أو ينتهي مبكرًا لا يُعدّ ناقصًا.</p>
-      </section>
-
-      <section aria-label="تغطية المشاريع">
-        <h3 className="mb-2 text-sm font-bold text-ink-soft">
-          مشاريع مصنفة بلا أي أرقام ({formatNumber(coverage.projects_without_data)} من {formatNumber(coverage.classified_projects)})
-        </h3>
-        <details className="rounded-xl border border-line bg-white">
-          <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-ink">عرض الأسماء</summary>
-          <ul className="grid gap-x-6 gap-y-1 border-t border-line px-3 py-2.5 text-sm text-ink-soft sm:grid-cols-2">
-            {coverage.projects_without_data_names.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
-        </details>
-      </section>
     </div>
   )
 }
@@ -106,7 +74,7 @@ export function DataQualityCard({ institution }: { institution: string | null })
     <Card
       id="data-quality"
       title="جودة البيانات"
-      hint="الصفوف المعزولة والتعارضات والأشهر الناقصة من آخر استيراد"
+      hint="الصفوف المعزولة والتعارضات من آخر استيراد"
       actions={
         <button
           type="button"

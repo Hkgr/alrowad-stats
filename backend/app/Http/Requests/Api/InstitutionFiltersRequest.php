@@ -75,7 +75,7 @@ class InstitutionFiltersRequest extends FormRequest
             'age' => ['bail', 'nullable', Rule::in(['under_18', 'adult'])],
             'disabled' => ['bail', 'nullable', Rule::in(['1', 'true'])],
             'period' => [
-                'bail', 'nullable', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/',
+                'bail', 'nullable', 'string', 'regex:/^\d{4}-(0[0-9]|1[0-2])$/',
                 function (string $attribute, mixed $value, Closure $fail) use ($institutionId) {
                     [$year, $month] = Period::parseKey($value);
                     if (! Period::where('institution_id', $institutionId)->where('year', $year)->where('month', $month)->exists()) {

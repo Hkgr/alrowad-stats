@@ -9,8 +9,8 @@ namespace App\Services\Import;
  *  - A row with no value typed by a person (only blanks, "-" or formulas over blanks) is MISSING,
  *    not zero. A typed 0 is an explicit zero.
  *  - Male = «ذكور -18» + «ذكور +18» when the age split is entered, else the typed «عدد الذكور»
- *    (same for female). A gender formula based on a percentage of the total is an estimate and is
- *    not stored as a count.
+ *    (same for female). A percentage formula fills a count the institution did not have; its stored
+ *    result is kept as the number of males or females.
  *  - Total = male + female (disabled people are part of it, never added on top). A stored formula
  *    result that disagrees with its components is replaced by the recomputed value and logged.
  *  - Typed aggregates that contradict the age split: when both give the same total, the total is
@@ -56,7 +56,14 @@ class RowValueResolver
 
         $age = fn (string $a, string $b) => ($v[$a]['typed'] ?? false) || ($v[$b]['typed'] ?? false)
             ? ($v[$a]['value'] ?? 0) + ($v[$b]['value'] ?? 0) : null;
-        $estimate = fn (string $f) => ($v[$f]['formula'] ?? false) && str_contains((string) ($v[$f]['f'] ?? ''), '%');
+        $estimated = function (string $field) use ($v): ?float {
+            $cell = $v[$field] ?? null;
+            if (! ($cell['formula'] ?? false) || ! str_contains((string) ($cell['f'] ?? ''), '%') || ($cell['value'] ?? null) === null) {
+                return null;
+            }
+
+            return $cell['value'];
+        };
 
         $male = $age('mu18', 'm18p');
         $female = $age('fu18', 'f18p');
@@ -83,13 +90,8 @@ class RowValueResolver
             $total = $ageTotal;
             $male = $female = null;
         } else {
-            $male ??= $typedMale;
-            $female ??= $typedFemale;
-            foreach (['male', 'female'] as $field) {
-                if (${$field} === null && $estimate($field)) {
-                    $issues[] = ['severity' => 'conflict', 'code' => 'gender_estimated', 'message' => 'عدد '.($field === 'male' ? 'الذكور' : 'الإناث').' في المصدر نسبة تقديرية من الإجمالي (صيغة %)؛ لم يُحفظ كعدد فعلي.'];
-                }
-            }
+            $male ??= $typedMale ?? $estimated('male');
+            $female ??= $typedFemale ?? $estimated('female');
 
             $sourceTotal = $v['total']['value'] ?? null;
             if ($male !== null && $female !== null) {
