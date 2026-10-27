@@ -5,7 +5,9 @@ import logo from '../assets/brand/rowad-logo.png'
 interface SiteHeaderProps {
   /** Selected period label, or a short "all periods" label. */
   periodLabel: string | null
-  search: ReactNode
+  /** Which dataset this screen belongs to, shown under the title. */
+  context?: string
+  search?: ReactNode
   fullscreen: { active: boolean; supported: boolean; toggle: () => void }
   /** Background symbols animation preference. */
   backdrop: { enabled: boolean; toggle: () => void }
@@ -14,14 +16,14 @@ interface SiteHeaderProps {
 }
 
 /** Light header: logo, short title, the chosen period, project search and presentation mode. */
-export function SiteHeader({ periodLabel, search, fullscreen, backdrop, className = '', style }: SiteHeaderProps) {
+export function SiteHeader({ periodLabel, context = 'الاستفادات المسجلة', search, fullscreen, backdrop, className = '', style }: SiteHeaderProps) {
   const FullscreenIcon = fullscreen.active ? Minimize2 : Maximize2
 
   return (
     <header className={`relative z-30 border-b border-line bg-white/95 backdrop-blur lg:sticky lg:top-0 ${className}`} style={style}>
       <div className="brand-rule" aria-hidden="true" />
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-5 gap-y-3 px-4 py-2.5 sm:px-6 lg:flex-nowrap lg:px-8">
-        <a href="/" className="flex shrink-0 items-center gap-4 rounded-lg" aria-label="إحصاءات الرواد — النظرة العامة">
+        <a href="/" className="flex shrink-0 items-center gap-4 rounded-lg" aria-label="إحصاءات الرواد — الصفحة الرئيسية">
           <img
             src={logo}
             alt="مؤسسة الرواد للتعاون والتنمية"
@@ -33,7 +35,7 @@ export function SiteHeader({ periodLabel, search, fullscreen, backdrop, classNam
           <span className="hidden min-w-0 sm:block">
             <span className="block text-lg font-extrabold leading-tight text-ink">إحصاءات الرواد</span>
             <span className="block text-sm text-ink-muted">
-              الاستفادات المسجلة
+              {context}
               {periodLabel && (
                 <>
                   {' · '}
@@ -44,14 +46,14 @@ export function SiteHeader({ periodLabel, search, fullscreen, backdrop, classNam
           </span>
         </a>
 
-        <div className="order-last w-full lg:order-none lg:ms-auto lg:w-[26rem]">{search}</div>
+        {search && <div className="order-last w-full lg:order-none lg:ms-auto lg:w-[26rem]">{search}</div>}
 
         <button
           type="button"
           onClick={backdrop.toggle}
           aria-pressed={backdrop.enabled}
           title={backdrop.enabled ? 'إيقاف حركة الخلفية' : 'تشغيل حركة الخلفية'}
-          className="ms-auto inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-white px-3.5 text-sm font-semibold text-ink hover:border-brand hover:text-brand-ink lg:ms-0"
+          className={`${search ? 'ms-auto lg:ms-0' : 'ms-auto'} inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-white px-3.5 text-sm font-semibold text-ink hover:border-brand hover:text-brand-ink`}
         >
           <Sparkles className={`size-4 ${backdrop.enabled ? 'text-brand' : 'text-ink-muted'}`} aria-hidden="true" />
           <span className="hidden xl:inline">{backdrop.enabled ? 'إيقاف الحركة' : 'تشغيل الحركة'}</span>

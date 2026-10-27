@@ -138,11 +138,8 @@ export function ScopeTrail(props: Props) {
 
 function FilterGroup({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <section
-      className="rounded-2xl border border-line border-s-[3px] bg-white p-2.5 shadow-card"
-      style={{ borderInlineStartColor: 'var(--t-primary)' }}
-    >
-      <header className="mb-2">
+    <section className="px-3.5 py-3.5">
+      <header className="mb-2.5">
         <h2 className="text-sm font-extrabold text-ink">{title}</h2>
         <p className="text-xs leading-5 text-ink-muted">{hint}</p>
       </header>
@@ -177,9 +174,9 @@ export function FilterRail(props: Props) {
         <ChevronDown className={`ms-auto size-4 text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 
-      <div className={`${open ? 'mt-3' : 'hidden'} space-y-3 lg:mt-0 lg:block`}>
-        <div className="flex items-center justify-between gap-2 px-1">
-          <h2 className="hidden text-sm font-extrabold text-ink lg:block">
+      <div className={`${open ? 'mt-3' : 'hidden'} overflow-hidden rounded-2xl border border-line bg-white shadow-card lg:mt-0 lg:block lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none`}>
+        <div className="flex items-center justify-between gap-2 px-3.5 py-3">
+          <h2 className="text-sm font-extrabold text-ink">
             التصفية
             {model.chips.length > 0 && <span className="num ms-1.5 text-ink-muted">{model.chips.length}</span>}
           </h2>
@@ -197,7 +194,7 @@ export function FilterRail(props: Props) {
         </div>
 
         {model.chips.length > 0 && (
-          <div className="flex flex-wrap gap-1.5" aria-live="polite">
+          <div className="flex flex-wrap gap-1.5 px-3.5 pb-3" aria-live="polite">
             {model.chips.map((chip) => (
               <span
                 key={chip.key}
@@ -218,6 +215,7 @@ export function FilterRail(props: Props) {
           </div>
         )}
 
+        <div className="divide-y divide-line border-t border-line">
         <FilterGroup title="الوقت" hint="سنة، أو شهر واحد، أو مجال من شهر إلى شهر">
           <div className="grid grid-cols-2 gap-2">
             <SelectField
@@ -328,6 +326,7 @@ export function FilterRail(props: Props) {
             onChange={(v) => props.onFilters({ disabled: v || null })}
           />
         </FilterGroup>
+        </div>
       </div>
     </aside>
   )

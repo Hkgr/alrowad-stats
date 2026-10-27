@@ -27,6 +27,16 @@ export const THEMES: Record<string, Theme> = {
   DEV: { key: 'DEV', primary: '#1A6B3A', dark: '#0F4324', light: '#F3FBF6', ink: '#FFFFFF', emoji: '🏡', backdrop: ['🌱', '🛠️', '🏗️', '🏡'] },
   HLT: { key: 'HLT', primary: '#B52532', dark: '#7A1721', light: '#FFF6F7', ink: '#FFFFFF', emoji: '🩺', backdrop: ['❤️', '🏥', '💊', '🩺'] },
   CHR: { key: 'CHR', primary: '#C95200', dark: '#7A3100', light: '#FFF6F0', ink: '#FFFFFF', emoji: '🤝', backdrop: ['🫶', '🎁', '🕊️', '🤝'] },
+  PRT: { key: 'PRT', primary: '#6D28A8', dark: '#43156E', light: '#F8F4FC', ink: '#FFFFFF', emoji: '🛡️', backdrop: ['🛡️', '🤝', '🏠', '💜'] },
+  EAR: { key: 'EAR', primary: '#C46B1A', dark: '#7A3E0C', light: '#FFF8F1', ink: '#FFFFFF', emoji: '🛠️', backdrop: ['🛠️', '🧱', '🌱', '🏡'] },
+  FOD: { key: 'FOD', primary: '#8A5A00', dark: '#5C3C00', light: '#FFF9EE', ink: '#FFFFFF', emoji: '🌾', backdrop: ['🌾', '🍞', '🧺', '🌱'] },
+  WSH: { key: 'WSH', primary: '#0E7490', dark: '#0A4E61', light: '#F3FBFD', ink: '#FFFFFF', emoji: '💧', backdrop: ['💧', '🚿', '🧼', '🌊'] },
+}
+
+/** Organization overview uses the same orange identity as the institution. */
+export const ORGANIZATION_THEME: Theme = {
+  key: 'ORGANIZATION', primary: '#EF5A27', dark: '#B23D0F', light: '#FFF7F2', ink: '#FFFFFF', emoji: '🏛️',
+  backdrop: ['🏛️', '🤝', '📍', '📊', '🌱'],
 }
 
 /** Institution-wide identity: overview and records without a track. */

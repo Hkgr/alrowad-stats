@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\ExportController;
 use App\Http\Controllers\Api\V1\FilterController;
 use App\Http\Controllers\Api\V1\InstitutionController;
+use App\Http\Controllers\Api\V1\OrganizationController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -26,4 +27,5 @@ Route::prefix('v1')->group(function () {
     Route::get('/analytics', [AnalyticsController::class, 'show']);
     Route::get('/export', [ExportController::class, 'show']);
     Route::get('/data-quality', [AnalyticsController::class, 'quality']);
+    Route::get('/organization', [OrganizationController::class, 'show']);
 });

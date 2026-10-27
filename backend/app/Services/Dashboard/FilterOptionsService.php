@@ -30,7 +30,7 @@ class FilterOptionsService
     {
         $measure = $this->dashboard->measure();
         $institutionId = $filters->institution->id;
-        $year = $filters->classificationYear;
+        $year = BeneficiaryDashboardService::effectiveClassificationYear($institutionId, $filters->classificationYear);
 
         $assignments = $year === null ? collect() : ProjectSectorAssignment::with('sector')
             ->where('institution_id', $institutionId)->where('reference_year', $year)->get()->keyBy('project_id');

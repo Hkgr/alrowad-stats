@@ -166,6 +166,12 @@ class BeneficiaryDashboardService
         return $year === null ? null : (int) $year;
     }
 
+    /** The requested classification year, or the latest one on file when none was chosen. */
+    public static function effectiveClassificationYear(int $institutionId, ?int $year): ?int
+    {
+        return $year ?? self::latestClassificationYear($institutionId);
+    }
+
     /**
      * Active records of the institution + measure with their period and year-matched sector
      * assignment, narrowed by the filters. From the project level down the sector filter is not
