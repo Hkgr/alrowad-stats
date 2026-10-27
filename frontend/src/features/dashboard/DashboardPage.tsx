@@ -128,6 +128,7 @@ export function DashboardPage() {
 
         <SiteHeader
           {...introProps(intro, 0)}
+          context="بيانات المؤسسة"
           periodLabel={data ? (data.filters.period?.label ?? rangeLabel(data.filters.from?.label, data.filters.to?.label) ?? 'كل الفترات') : null}
           fullscreen={fullscreen}
           backdrop={backdrop}
@@ -142,15 +143,15 @@ export function DashboardPage() {
         <main
           id="content"
           tabIndex={-1}
-          className="mx-auto grid w-full max-w-[1600px] items-start gap-5 px-4 pb-16 pt-5 outline-none sm:px-6 lg:grid-cols-[18.75rem_minmax(0,1fr)] lg:gap-6 lg:px-8"
+          className="grid w-full items-start pb-16 outline-none lg:grid-cols-[20.5rem_minmax(0,1fr)] lg:pb-0"
         >
-          <div className="filter-rail sticky top-0 z-20 max-h-[calc(100dvh-0.75rem)] self-start overflow-y-auto bg-paper/95 backdrop-blur-md lg:top-[6.5rem] lg:max-h-[calc(100dvh-7.25rem)] lg:bg-transparent lg:backdrop-blur-none">
+          <div className="filter-rail sticky top-0 z-20 max-h-[calc(100dvh-0.75rem)] self-start overflow-y-auto bg-paper/95 px-4 pt-4 backdrop-blur-md sm:px-6 lg:top-[6.25rem] lg:h-[calc(100dvh-6.25rem)] lg:max-h-[calc(100dvh-6.25rem)] lg:border-e lg:border-line lg:bg-white lg:px-8 lg:py-5 lg:backdrop-blur-none">
             <div {...trailIntro}>
               <FilterRail {...explorer} />
             </div>
           </div>
 
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0 space-y-5 px-4 pt-5 sm:px-6 lg:px-8 lg:pt-6">
           <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${trailIntro.className}`} style={trailIntro.style}>
             <ScopeTrail {...explorer} />
             <ShareExportBar filters={filters} />

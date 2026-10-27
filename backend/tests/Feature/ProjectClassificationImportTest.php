@@ -140,7 +140,7 @@ class ProjectClassificationImportTest extends TestCase
         $this->assertSame($before, [Project::count(), Sector::count(), ProjectSectorAssignment::count()]);
     }
 
-    public function test_a_2026_classification_does_not_label_2025_records(): void
+    public function test_a_2026_classification_covers_the_same_project_in_2025(): void
     {
         $this->import();
         $institution = Institution::where('slug', 'rowad')->first();
@@ -152,15 +152,14 @@ class ProjectClassificationImportTest extends TestCase
             'measure_id' => Measure::where('code', Measure::REGISTERED_BENEFITS)->value('id'), 'male_count' => 5, 'female_count' => 5,
         ]);
 
-        // The 2026 sector only covers 2026 records...
+        // The same project keeps its 2026 track in 2025, so the record is not left unclassified.
         $this->getJson('/api/v1/dashboard?institution=rowad&sector=cul')
             ->assertOk()
-            ->assertJsonPath('data.summary.total', 1450);
+            ->assertJsonPath('data.summary.total', 1460);
 
-        // ...and the 2025 record is reported as unclassified.
         $this->getJson('/api/v1/dashboard?institution=rowad')
             ->assertJsonPath('data.summary.total', 1460)
-            ->assertJsonPath('data.unclassified.total', 10);
+            ->assertJsonPath('data.unclassified', null);
     }
 
     public function test_command_runs_and_writes_a_report(): void

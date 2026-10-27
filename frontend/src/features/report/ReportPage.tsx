@@ -95,7 +95,7 @@ export function ReportPage() {
 
   // Fixed when the page opens, so the date does not change between renders.
   const [today] = useState(() => new Date().toLocaleDateString('ar-SY-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' }))
-  const backHref = `/?${filtersQuery(filters)}`
+  const backHref = `/institution?${filtersQuery(filters)}`
 
   return (
     <div className="min-h-screen bg-paper-deep py-6 print:bg-white print:py-0" style={themeStyle(theme)}>
