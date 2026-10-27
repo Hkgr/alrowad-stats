@@ -23,9 +23,11 @@ use Illuminate\Support\Collection;
  * at the finest documented level, so the totals of a sub activity, a main activity, a project, a
  * sector and the institution are all plain sums of the same rows — nothing is counted twice.
  *
- * A record belongs to a sector through its project's assignment for the year of the record's own
- * period. Offices and projects are counted DISTINCT. Measures are never combined: people
- * (registered_benefits) and families (households_served) are reported separately.
+ * A record belongs to a sector through its project's assignment for the classification year.
+ * That year is the project list (2026). Activity from another year, such as 2025, uses the same
+ * list when that year has no list of its own. Offices and projects are counted DISTINCT.
+ * Measures are never combined: people (registered_benefits) and families (households_served)
+ * are reported separately.
  */
 class BeneficiaryDashboardService
 {
@@ -166,15 +168,24 @@ class BeneficiaryDashboardService
         return $year === null ? null : (int) $year;
     }
 
-    /** The requested classification year, or the latest one on file when none was chosen. */
+    /**
+     * The year whose project list classifies these records.
+     *
+     * A year that has its own links is used as-is. A year with none — 2025 activity against
+     * the 2026 project list — uses the latest list, so those records keep the same track.
+     */
     public static function effectiveClassificationYear(int $institutionId, ?int $year): ?int
     {
-        return $year ?? self::latestClassificationYear($institutionId);
+        if ($year !== null && ProjectSectorAssignment::where('institution_id', $institutionId)->where('reference_year', $year)->exists()) {
+            return $year;
+        }
+
+        return self::latestClassificationYear($institutionId);
     }
 
     /**
-     * Active records of the institution + measure with their period and year-matched sector
-     * assignment, narrowed by the filters. From the project level down the sector filter is not
+     * Active records of the institution + measure, narrowed by the filters, with the sector
+     * assignment of the classification year. From the project level down the sector filter is not
      * applied (the project's own records, all years).
      *
      * @return Builder<ActivityRecord>
@@ -186,10 +197,10 @@ class BeneficiaryDashboardService
                 $join->on('periods.id', '=', 'activity_records.period_id')
                     ->on('periods.institution_id', '=', 'activity_records.institution_id');
             })
-            ->leftJoin('project_sector_assignments as psa', function (JoinClause $join) {
+            ->leftJoin('project_sector_assignments as psa', function (JoinClause $join) use ($f) {
                 $join->on('psa.project_id', '=', 'activity_records.project_id')
                     ->on('psa.institution_id', '=', 'activity_records.institution_id')
-                    ->on('psa.reference_year', '=', 'periods.year');
+                    ->where('psa.reference_year', '=', $f->classificationYear);
             })
             ->where('activity_records.institution_id', $f->institution->id)
             ->where('activity_records.measure_id', $measure->id)

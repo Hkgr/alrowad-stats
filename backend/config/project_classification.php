@@ -19,8 +19,8 @@ return [
     ],
 
     /*
-     * Explicit links: project name as written in the reference file => slug of an existing project.
-     * Use this when an existing project must be linked although its name is written differently.
+     * Explicit links: project name as written in the reference file => project slug.
+     * The project is created with that slug when it is not already in the catalog.
      */
     'aliases' => [
         'مشروع لعبة وفرحة' => 'loba-wa-farha',

@@ -14,10 +14,9 @@ use App\Models\SubActivity;
  * Validated, already-resolved filter state. Every model has been checked to belong to the
  * institution, the main activity to the project and the sub activity to the main activity.
  *
- * - classificationYear: reference year used to list projects per sector (the selected period's
- *   year, else the year filter, else the latest classified year). Figures are always classified by the year of each
- *   record's own period.
- * - unclassified: the pseudo-sector of records whose project has no sector for that year.
+ * - classificationYear: the project-list year used to place every record in a sector. An activity
+ *   year that has no list of its own uses the latest list, so 2025 follows the 2026 project list.
+ * - unclassified: the pseudo-sector of records whose project is absent from that list.
  * - From the project level down, the sector is navigation context only: the figures cover all of
  *   the project's records.
  */

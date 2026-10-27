@@ -202,6 +202,7 @@ class InstitutionFiltersRequest extends FormRequest
         $to = $monthKey($input('to'));
         // A range inside one year lists that year's projects, like a single month does.
         $rangeYear = $from !== null && $to !== null && intdiv($from, 100) === intdiv($to, 100) ? intdiv($from, 100) : null;
+        $activityYear = $period?->year ?? $year ?? $rangeYear;
         $project = $scoped(Project::class, $input('project'));
         // Main activity slugs are unique inside their project, sub activity slugs inside their main.
         $main = $project && $input('main_activity') !== null
@@ -217,7 +218,7 @@ class InstitutionFiltersRequest extends FormRequest
             offices: $input('office') === null ? [] : Office::where('institution_id', $institution->id)
                 ->whereIn('slug', array_filter(array_map('trim', explode(',', $input('office')))))
                 ->orderBy('sort_order')->orderBy('id')->get()->all(),
-            classificationYear: $period?->year ?? $year ?? $rangeYear ?? BeneficiaryDashboardService::latestClassificationYear($institution->id),
+            classificationYear: BeneficiaryDashboardService::effectiveClassificationYear($institution->id, $activityYear),
             unclassified: $sectorSlug === DashboardFilters::UNCLASSIFIED,
             mainActivity: $main,
             subActivity: $sub,

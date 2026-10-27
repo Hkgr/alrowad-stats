@@ -160,6 +160,28 @@ class ProjectClassificationImportTest extends TestCase
         $this->getJson('/api/v1/dashboard?institution=rowad')
             ->assertJsonPath('data.summary.total', 1460)
             ->assertJsonPath('data.unclassified', null);
+
+        $this->getJson('/api/v1/dashboard?institution=rowad&year=2025&sector=cul')
+            ->assertOk()
+            ->assertJsonPath('data.summary.total', 10)
+            ->assertJsonPath('data.unclassified', null);
+    }
+
+    public function test_a_missing_alias_target_is_created_with_that_slug(): void
+    {
+        $existing = Project::where('slug', 'loba-wa-farha')->first();
+        ActivityRecord::where('project_id', $existing->id)->delete();
+        ProjectSectorAssignment::where('project_id', $existing->id)->delete();
+        $existing->delete();
+
+        $report = $this->import();
+
+        $project = Project::where('slug', 'loba-wa-farha')->first();
+        $this->assertNotNull($project);
+        $this->assertSame('لعبة و فرحة', $project->name);
+        $this->assertSame('cul', $project->sectorIn(2026)->slug);
+        $this->assertContains('لعبة و فرحة', $report['projects']['created']);
+        $this->assertSame([], $report['projects']['aliased']);
     }
 
     public function test_command_runs_and_writes_a_report(): void
