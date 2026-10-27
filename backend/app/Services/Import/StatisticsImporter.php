@@ -147,7 +147,12 @@ class StatisticsImporter
             if (str_starts_with($name, '~$') || strtolower($file->getExtension()) !== 'xlsx') {
                 continue;
             }
-            $files[] = ltrim(str_replace([$root, '\\'], ['', '/'], str_replace('\\', '/', $file->getPathname())), '/');
+            $relative = ltrim(str_replace([$root, '\\'], ['', '/'], str_replace('\\', '/', $file->getPathname())), '/');
+            // The organization workbook sits directly in data/raw. Year folders hold the institution files.
+            if (! str_contains($relative, '/')) {
+                continue;
+            }
+            $files[] = $relative;
         }
         sort($files);
 

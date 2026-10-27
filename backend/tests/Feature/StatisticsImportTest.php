@@ -308,12 +308,14 @@ class StatisticsImportTest extends TestCase
     public function test_unlisted_and_lock_files_are_not_imported(): void
     {
         XlsxFixture::create(['x' => [1 => ['A' => 'المكتب']]], "{$this->root}/2026/جديد.xlsx");
+        XlsxFixture::create(['x' => [1 => ['A' => 'المكتب']]], "{$this->root}/منظمة.xlsx");
         File::put("{$this->root}/2026/~\$قفل.xlsx", 'lock');
 
         $report = $this->import([]);
 
         $this->assertSame('unmapped', $report['files']['2026/جديد.xlsx']['status']);
         $this->assertArrayNotHasKey('2026/~$قفل.xlsx', $report['files']);
+        $this->assertArrayNotHasKey('منظمة.xlsx', $report['files']);
     }
 
     public function test_activity_filters_follow_the_parent_child_relation(): void

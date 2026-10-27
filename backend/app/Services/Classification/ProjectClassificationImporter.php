@@ -182,9 +182,15 @@ class ProjectClassificationImporter
         if (isset($aliases[$key])) {
             $project = Project::where('institution_id', $institution->id)->where('slug', $aliases[$key])->first();
             if ($project === null) {
-                $this->conflict($rawName, "الـalias يشير إلى مشروع غير موجود ({$aliases[$key]}).");
+                $display = ArabicName::display($rawName);
+                $project = Project::create([
+                    'institution_id' => $institution->id,
+                    'slug' => $aliases[$key],
+                    'name' => $display,
+                ]);
+                $this->report['projects']['created'][] = $display;
 
-                return null;
+                return $project;
             }
             $this->report['projects']['aliased'][] = "{$rawName} ← {$project->name}";
 
