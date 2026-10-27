@@ -80,11 +80,11 @@ export function ShareExportBar({ filters }: { filters: FilterState }) {
         </button>
         {menuOpen && (
           <div className="absolute end-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-xl border border-line-strong bg-white shadow-card">
-            <a className={item} href={download('xlsx')} download onClick={() => setMenuOpen(false)}>
+            <a className={item} href={download('xlsx')} download="rowad-statistics.xlsx" onClick={() => setMenuOpen(false)}>
               <FileSpreadsheet className="size-4 text-ink-muted" aria-hidden="true" />
               Excel (عدة أوراق)
             </a>
-            <a className={item} href={download('csv')} download onClick={() => setMenuOpen(false)}>
+            <a className={item} href={download('csv')} download="rowad-statistics.csv" onClick={() => setMenuOpen(false)}>
               <FileText className="size-4 text-ink-muted" aria-hidden="true" />
               CSV (جدول التفاصيل)
             </a>
